@@ -75,14 +75,7 @@ export interface ScreenCoord {
   y: number;
 }
 
-export type BuiltinModelId =
-  | 'gemini-chan'
-  | 'crimson-chibi'
-  | 'kaykit-mage'
-  | 'kaykit-knight'
-  | 'robot-expressive'
-  | 'procedural'
-  | 'custom';
+export type BuiltinModelId = 'boy-avatar' | 'procedural' | 'custom';
 
 export interface ModelPreset {
   id: BuiltinModelId;

@@ -50,6 +50,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   const characterRootRef = useRef<THREE.Group | null>(null);
   const externalModelRef = useRef<THREE.Group | null>(null);
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
+  const foxMixerRef = useRef<THREE.AnimationMixer | null>(null);
   const currentActionsRef = useRef<{ [key: string]: THREE.AnimationAction }>({});
   const leftEyeGroupRef = useRef<THREE.Group | null>(null);
   const rightEyeGroupRef = useRef<THREE.Group | null>(null);
@@ -880,154 +881,232 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       orbitingItemsRef.current.push(group);
     };
 
-    // 1. 🪐 Ringed Planet
+    // -------------------------------------------------------------------------
+    // Load Open-Source 3D Models for Orbiting Items (Saturn, Fox, Plane, Earth-Moon)
+    // -------------------------------------------------------------------------
+    const gltfOrbitLoader = new GLTFLoader();
+    const orbitDracoLoader = new DRACOLoader();
+    orbitDracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
+    gltfOrbitLoader.setDRACOLoader(orbitDracoLoader);
+
+    // 1. 🪐 Saturn (SolarSystemLowPoly GitHub)
     const planetGroup = new THREE.Group();
+    // Elegant placeholder while GLB streams in
+    const saturnPlaceholder = new THREE.Group();
     const planetSphere = new THREE.Mesh(
-      new THREE.SphereGeometry(0.26, 32, 32),
-      new THREE.MeshStandardMaterial({ color: 0xe6ccb2, roughness: 0.45 })
+      new THREE.SphereGeometry(0.25, 32, 32),
+      new THREE.MeshStandardMaterial({ color: 0xf3d5b5, roughness: 0.38, metalness: 0.05 })
     );
     planetSphere.castShadow = true;
-    planetGroup.add(planetSphere);
+    saturnPlaceholder.add(planetSphere);
     const saturnRing = new THREE.Mesh(
-      new THREE.RingGeometry(0.34, 0.52, 48),
+      new THREE.RingGeometry(0.33, 0.52, 64),
       new THREE.MeshStandardMaterial({
-        color: 0xd4a373,
+        color: 0xe8c49e,
         side: THREE.DoubleSide,
-        roughness: 0.5,
+        roughness: 0.42,
         transparent: true,
-        opacity: 0.88,
+        opacity: 0.9,
       })
     );
     saturnRing.rotation.x = Math.PI * 0.42;
-    saturnRing.rotation.y = 0.25;
-    planetGroup.add(saturnRing);
+    saturnRing.rotation.y = 0.22;
+    saturnPlaceholder.add(saturnRing);
+    planetGroup.add(saturnPlaceholder);
+
+    const saturnUrls = getModelCandidateUrls('models/saturn.glb');
+    const loadSaturnModel = (idx = 0) => {
+      if (idx >= saturnUrls.length) return;
+      gltfOrbitLoader.load(
+        saturnUrls[idx],
+        (gltf) => {
+          saturnPlaceholder.visible = false;
+          const s = gltf.scene;
+          const b = new THREE.Box3().setFromObject(s);
+          const size = b.getSize(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z) || 1;
+          s.scale.setScalar(0.58 / maxDim);
+          s.rotation.z = THREE.MathUtils.degToRad(26.7);
+          s.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
+          planetGroup.add(s);
+        },
+        undefined,
+        () => loadSaturnModel(idx + 1)
+      );
+    };
+    loadSaturnModel();
+
     registerItem(planetGroup, {
       id: 'about',
       emoji: '🪐',
       label: '关于我',
-      radius: 2.05,
-      angle: 2.4,
-      speed: 0.26,
-      baseY: 0.22,
+      radius: 2.15,
+      angle: 2.3,
+      speed: 0.22,
+      baseY: 0.28,
     });
 
-    // 2. ✈️ Origami Paper Airplane
+    // 2. ✈️ Origami Paper Airplane (Video exact aesthetic: crisp matte paper, dihedral wings & keel)
     const planeGroup = new THREE.Group();
-    const planeMat = new THREE.MeshStandardMaterial({
+    const planeGeo = new THREE.BufferGeometry();
+    const paperVertices = new Float32Array([
+      // Left wing upper
+      0, 0, 0.46,   -0.42, 0.08, -0.28,   -0.05, 0.02, -0.22,
+      // Right wing upper
+      0, 0, 0.46,    0.05, 0.02, -0.22,    0.42, 0.08, -0.28,
+      // Central fold left keel
+      0, 0, 0.46,   -0.05, 0.02, -0.22,    0, -0.15, -0.26,
+      // Central fold right keel
+      0, 0, 0.46,    0, -0.15, -0.26,     0.05, 0.02, -0.22,
+      // Wing underside bevel left
+      0, -0.15, -0.26, -0.05, 0.02, -0.22, -0.42, 0.08, -0.28,
+      // Wing underside bevel right
+      0, -0.15, -0.26,  0.42, 0.08, -0.28,   0.05, 0.02, -0.22,
+    ]);
+    planeGeo.setAttribute('position', new THREE.BufferAttribute(paperVertices, 3));
+    planeGeo.computeVertexNormals();
+
+    const paperMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
-      roughness: 0.28,
+      roughness: 0.32,
+      metalness: 0.02,
       side: THREE.DoubleSide,
     });
-    const planeGeo = new THREE.BufferGeometry();
-    const vertices = new Float32Array([
-      0, 0, 0.34, -0.28, 0.04, -0.22, -0.04, 0.02, -0.18,
-      0, 0, 0.34, 0.04, 0.02, -0.18, 0.28, 0.04, -0.22,
-      0, 0, 0.34, -0.04, 0.02, -0.18, 0, -0.09, -0.2,
-      0, 0, 0.34, 0, -0.09, -0.2, 0.04, 0.02, -0.18,
-    ]);
-    planeGeo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-    planeGeo.computeVertexNormals();
-    const planeMesh = new THREE.Mesh(planeGeo, planeMat);
+    const planeMesh = new THREE.Mesh(planeGeo, paperMat);
     planeMesh.castShadow = true;
     planeGroup.add(planeMesh);
+
+    // Subtle dark fold line along the center ridge
+    const creaseMat = new THREE.LineBasicMaterial({ color: 0xd1d5db, linewidth: 2 });
+    const creaseGeo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 0, 0.46),
+      new THREE.Vector3(0, 0.02, -0.22),
+    ]);
+    const creaseLine = new THREE.Line(creaseGeo, creaseMat);
+    planeGroup.add(creaseLine);
+
     registerItem(planeGroup, {
       id: 'projects',
       emoji: '✈️',
-      label: '作品与经历',
-      radius: 2.68,
-      angle: 0.35,
-      speed: 0.34,
-      baseY: 0.3,
+      label: '代表作品',
+      radius: 3.82,
+      angle: 0.45,
+      speed: 0.32,
+      baseY: 0.38,
       orientToTangent: true,
     });
 
-    // 3. 🦊 Cute Little Fox
+    // 3. 🦊 Little Fox (KhronosGroup official animated low-poly Fox from GitHub)
     const foxGroup = new THREE.Group();
-    const foxOrangeMat = new THREE.MeshStandardMaterial({ color: 0xe76f51, roughness: 0.42 });
-    const foxWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
-    const foxDarkMat = new THREE.MeshStandardMaterial({ color: 0x2b2d42, roughness: 0.3 });
+    // Warm low-poly placeholder while Fox GLB is loading
+    const foxPlaceholder = new THREE.Mesh(
+      new THREE.ConeGeometry(0.12, 0.28, 16),
+      new THREE.MeshStandardMaterial({ color: 0xe76f51, roughness: 0.4 })
+    );
+    foxPlaceholder.position.y = 0.14;
+    foxGroup.add(foxPlaceholder);
 
-    const foxBody = new THREE.Mesh(new THREE.SphereGeometry(0.16, 24, 24), foxOrangeMat);
-    foxBody.scale.set(0.85, 0.85, 1.35);
-    foxBody.position.set(0, 0.16, 0);
-    foxBody.castShadow = true;
-    foxGroup.add(foxBody);
+    const foxUrls = getModelCandidateUrls('models/fox.glb');
+    const loadFoxModel = (idx = 0) => {
+      if (idx >= foxUrls.length) return;
+      gltfOrbitLoader.load(
+        foxUrls[idx],
+        (gltf) => {
+          foxPlaceholder.visible = false;
+          const fs = gltf.scene;
+          const b = new THREE.Box3().setFromObject(fs);
+          const size = b.getSize(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z) || 1;
+          fs.scale.setScalar(0.48 / maxDim);
+          const b2 = new THREE.Box3().setFromObject(fs);
+          fs.position.y = -b2.min.y;
+          fs.position.x = -(b2.min.x + b2.max.x) / 2;
+          fs.position.z = -(b2.min.z + b2.max.z) / 2;
+          fs.rotation.y = -Math.PI / 2;
+          fs.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
+          foxGroup.add(fs);
 
-    const foxHead = new THREE.Mesh(new THREE.SphereGeometry(0.155, 24, 24), foxOrangeMat);
-    foxHead.scale.set(1.08, 0.95, 0.98);
-    foxHead.position.set(0, 0.31, 0.14);
-    foxHead.castShadow = true;
-    foxGroup.add(foxHead);
-
-    const foxSnout = new THREE.Mesh(new THREE.ConeGeometry(0.065, 0.12, 16), foxWhiteMat);
-    foxSnout.rotation.x = Math.PI / 2;
-    foxSnout.position.set(0, 0.28, 0.28);
-    foxGroup.add(foxSnout);
-
-    [-0.09, 0.09].forEach((xPos) => {
-      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.15, 16), foxOrangeMat);
-      ear.position.set(xPos, 0.45, 0.13);
-      ear.rotation.z = xPos < 0 ? 0.22 : -0.22;
-      foxGroup.add(ear);
-    });
-
-    [-0.06, 0.06].forEach((xPos) => {
-      const fEye = new THREE.Mesh(new THREE.SphereGeometry(0.022, 12, 12), foxDarkMat);
-      fEye.position.set(xPos, 0.32, 0.27);
-      fEye.castShadow = true;
-      foxGroup.add(fEye);
-    });
-
-    const foxTail = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.28, 16), foxOrangeMat);
-    foxTail.rotation.x = -Math.PI * 0.38;
-    foxTail.position.set(0, 0.21, -0.24);
-    foxGroup.add(foxTail);
-
-    const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.065, 16, 16), foxWhiteMat);
-    tailTip.position.set(0, 0.26, -0.34);
-    foxGroup.add(tailTip);
-
-    [[-0.07, 0.08], [0.07, 0.08], [-0.07, -0.09], [0.07, -0.09]].forEach(([lx, lz]) => {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.025, 0.14, 12), foxDarkMat);
-      leg.position.set(lx, 0.06, lz);
-      foxGroup.add(leg);
-    });
+          // Setup Fox Bone Animation (Survey / idle look-around)
+          if (gltf.animations && gltf.animations.length > 0) {
+            const mixer = new THREE.AnimationMixer(fs);
+            foxMixerRef.current = mixer;
+            const surveyClip =
+              gltf.animations.find((a) => a.name.toLowerCase().includes('survey')) ||
+              gltf.animations[0];
+            const action = mixer.clipAction(surveyClip);
+            action.play();
+          }
+        },
+        undefined,
+        () => loadFoxModel(idx + 1)
+      );
+    };
+    loadFoxModel();
 
     registerItem(foxGroup, {
       id: 'hobbies',
       emoji: '🦊',
-      label: '兴趣与日常',
-      radius: 3.32,
-      angle: -0.75,
-      speed: 0.21,
-      baseY: -0.06,
+      label: '技能图谱',
+      radius: 2.95,
+      angle: -0.85,
+      speed: 0.20,
+      baseY: -0.04,
+      orientToTangent: true,
     });
 
-    // 4. 🎧 Celestial Music Capsule
+    // 4. 🎧 Celestial Orbit Node / Earth-Moon (SolarSystemLowPoly GitHub)
     const contactGroup = new THREE.Group();
-    const capsuleBody = new THREE.Mesh(
-      new THREE.OctahedronGeometry(0.21, 2),
-      new THREE.MeshStandardMaterial({ color: 0xa5b4fc, roughness: 0.28, metalness: 0.15 })
+    const earthPlaceholder = new THREE.Mesh(
+      new THREE.SphereGeometry(0.22, 24, 24),
+      new THREE.MeshStandardMaterial({ color: 0x60a5fa, roughness: 0.35 })
     );
-    capsuleBody.scale.set(1.15, 0.85, 0.65);
-    capsuleBody.castShadow = true;
-    contactGroup.add(capsuleBody);
+    earthPlaceholder.castShadow = true;
+    contactGroup.add(earthPlaceholder);
 
-    const miniRing = new THREE.Mesh(
-      new THREE.TorusGeometry(0.28, 0.018, 12, 36),
-      new THREE.MeshBasicMaterial({ color: 0xffffff })
-    );
-    miniRing.rotation.x = 0.8;
-    contactGroup.add(miniRing);
+    const earthUrls = getModelCandidateUrls('models/earth_moon.glb');
+    const loadEarthModel = (idx = 0) => {
+      if (idx >= earthUrls.length) return;
+      gltfOrbitLoader.load(
+        earthUrls[idx],
+        (gltf) => {
+          earthPlaceholder.visible = false;
+          const es = gltf.scene;
+          const b = new THREE.Box3().setFromObject(es);
+          const size = b.getSize(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z) || 1;
+          es.scale.setScalar(0.48 / maxDim);
+          es.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
+          contactGroup.add(es);
+        },
+        undefined,
+        () => loadEarthModel(idx + 1)
+      );
+    };
+    loadEarthModel();
 
     registerItem(contactGroup, {
       id: 'contact',
       emoji: '🎧',
-      label: '联系与电台',
-      radius: 3.32,
-      angle: 2.35,
-      speed: 0.21,
-      baseY: 0.24,
+      label: '联络交流',
+      radius: 4.55,
+      angle: 2.2,
+      speed: 0.16,
+      baseY: 0.35,
     });
 
     // -------------------------------------------------------------------------
@@ -1161,9 +1240,12 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       const delta = Math.min(clock.getDelta(), 0.05);
       const elapsed = clock.getElapsedTime();
 
-      // Update Skeletal Animations (Gemini-chan, Robot, etc.)
+      // Update Skeletal Animations (Character & Fox)
       if (mixerRef.current) {
         mixerRef.current.update(delta);
+      }
+      if (foxMixerRef.current) {
+        foxMixerRef.current.update(delta);
       }
 
       // Smooth rotation dampening
@@ -1500,7 +1582,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           const box = new THREE.Box3().setFromObject(modelScene);
           const size = box.getSize(new THREE.Vector3());
           const maxDim = Math.max(size.x, size.y, size.z) || 1;
-          const targetHeight = activeModelId === 'robot-expressive' ? 2.1 : 2.35;
+          const targetHeight = 2.25;
           const scale = targetHeight / maxDim;
           modelScene.scale.setScalar(scale);
 
@@ -1510,8 +1592,35 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           modelScene.position.x = -(scaledBox.min.x + scaledBox.max.x) / 2;
           modelScene.position.z = -(scaledBox.min.z + scaledBox.max.z) / 2;
 
+          // For male RPG boy avatar, hide game weapons so he is peaceful & modern
+          const weaponNames = new Set([
+            'One-handed Sword',
+            'shield_02',
+            'Two-handed Sword',
+            'quiver_02',
+            'arrow_02',
+            'stick_02',
+            'bow_03',
+            'Plane',
+            'shield',
+            'Two_Handed_Weapon',
+            'bow',
+            'rope',
+            'bow_H1',
+            'bow_H2',
+            'bow_L1',
+            'bow_L2',
+            'stick',
+            'One_Handed_Weapon_L',
+            'arrow',
+            'quiver',
+          ]);
+
           // Enable shadows and enhance materials
           modelScene.traverse((child) => {
+            if (weaponNames.has(child.name)) {
+              child.visible = false;
+            }
             if ((child as THREE.Mesh).isMesh) {
               child.castShadow = true;
               child.receiveShadow = true;

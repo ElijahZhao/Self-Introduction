@@ -87,10 +87,10 @@ export const ConfigDrawer: React.FC<ConfigDrawerProps> = ({
         <div className={`p-5 border-b flex items-center justify-between ${isDark ? 'border-slate-800' : 'border-slate-200/70'}`}>
           <div>
             <h3 className={`font-bold text-base ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
-              3D 展台模型库 & 个人配置
+              3D 展台主角与个人介绍设置
             </h3>
             <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              精选 GitHub 开源 3D 模型素材 · 支持导入真人语音与本地模型
+              精选 GitHub 开源男生 3D 角色模型 · 围绕个人介绍打造的 3D 星轨展台
             </p>
           </div>
           <button
@@ -106,16 +106,16 @@ export const ConfigDrawer: React.FC<ConfigDrawerProps> = ({
         </div>
 
         <div className={`p-5 overflow-y-auto flex-1 space-y-5 text-xs ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-          {/* 1. GitHub 3D Character Model Library */}
+          {/* 1. GitHub 3D Character Model */}
           <div className={`p-3.5 rounded-2xl border shadow-xs space-y-2.5 ${
             isDark ? 'bg-slate-800/70 border-slate-700/60' : 'bg-white/75 border-white'
           }`}>
             <div className={`font-semibold flex items-center gap-1.5 text-sm ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
-              <span>🎮</span>
-              <span>GitHub 开源 3D 角色素材库（点击一键切换）</span>
+              <span>🧑🏻‍💻</span>
+              <span>GitHub 开源 3D 男生角色模型</span>
             </div>
             <p className={`leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              为你集成了 GitHub 开源社区的高品质角色资产，包含骨骼动效与精细 PBR 材质，点击任意一项直接在星轨展台上展示：
+              精选 GitHub 开源社区的高品质男生 3D 动漫手办资产，自带生动骨骼呼吸动作：
             </p>
 
             <div className="space-y-2 pt-1">

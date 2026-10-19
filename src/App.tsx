@@ -14,7 +14,7 @@ import { ThreeCanvas } from './components/ThreeCanvas';
 import { Header } from './components/Header';
 import { OrbitNav } from './components/OrbitNav';
 import { InfoModal } from './components/InfoModal';
-import { WardrobeFooter } from './components/WardrobeFooter';
+import { PortfolioDock } from './components/PortfolioDock';
 import { ConfigDrawer } from './components/ConfigDrawer';
 import { FloatingWaveBadge } from './components/FloatingWaveBadge';
 import { OrbitHoverTooltip } from './components/OrbitHoverTooltip';
@@ -47,13 +47,15 @@ export const App: React.FC = () => {
   const [currentPersonaId, setCurrentPersonaId] = useState<PersonaId>('explorer');
   const currentPersona = profileConfig.personas[currentPersonaId];
 
-  // 3D Avatar Model Preset (Default to high quality GitHub model: Gemini-chan)
+  // 3D Male Avatar Model Preset (Default to open-source GitHub model: RPG Boy)
   const [activeModelId, setActiveModelId] = useState<BuiltinModelId>(() => {
     try {
       const savedModel = localStorage.getItem('avatar_portfolio_model');
-      if (savedModel) return savedModel as BuiltinModelId;
+      if (savedModel && (savedModel === 'boy-avatar' || savedModel === 'procedural')) {
+        return savedModel as BuiltinModelId;
+      }
     } catch (e) {}
-    return 'gemini-chan';
+    return 'boy-avatar';
   });
 
   // Accessory DIY state initialized from current persona outfit
@@ -285,13 +287,13 @@ export const App: React.FC = () => {
 
   const handleResetModel = () => {
     setExternalModelFile(null);
-    setActiveModelId('gemini-chan');
+    setActiveModelId('boy-avatar');
     audioEngine.playSFX('tap');
-    showToast('已重置为默认 Gemini-chan 3D 萌娘模型');
+    showToast('已重置为默认赵玉林 3D 动漫分身模型');
   };
 
   const handleSaveProfile = (newName: string, newAbout: string) => {
-    const trimmedName = newName.trim() || '林星染 · Xingran';
+    const trimmedName = newName.trim() || '赵玉林 · Elijah Zhao';
     const trimmedAbout = newAbout.trim();
 
     setProfileConfig((prev) => {
@@ -392,17 +394,13 @@ export const App: React.FC = () => {
         onOpenDrawer={handleOpenDrawer}
       />
 
-      {/* Bottom Wardrobe & Dress-Up Controls with GitHub 3D Model Preset Selector */}
-      <WardrobeFooter
+      {/* Bottom Personal Portfolio Navigation Dock */}
+      <PortfolioDock
         currentPersonaId={currentPersonaId}
-        accessories={accessories}
         themeMode={themeMode}
-        activeModelId={activeModelId}
-        onSelectModel={handleSelectModel}
+        activeOrbitModuleId={activeOrbitModuleId}
+        onSelectModule={handleSelectOrbitItem}
         onSelectPersona={handleSelectPersona}
-        onToggleAccessory={handleToggleAccessory}
-        onCycleHairColor={handleCycleHairColor}
-        onCycleOrbitMobile={handleCycleOrbitMobile}
         onOpenDrawer={handleOpenDrawer}
       />
 
