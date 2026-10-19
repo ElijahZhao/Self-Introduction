@@ -32,14 +32,14 @@ export const PortfolioDock: React.FC<PortfolioDockProps> = ({
       <div className="glass-pill px-3 py-1 rounded-full text-[11px] flex items-center gap-1.5 shadow-xs pointer-events-auto transition-opacity opacity-90 hover:opacity-100">
         <span className="text-sky-500 animate-pulse">●</span>
         <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>
-          3D 展台可自由拖拽旋转 · 点击环绕的土星、狐狸与纸飞机打开介绍 · 底部右侧切换主角
+          拖拽环绕视角 · 点击环绕的土星、狐狸与纸飞机打开介绍 · 底部右侧切换主角
         </span>
       </div>
 
       {/* Main Portfolio Navigation Dock */}
       <div className="glass-panel rounded-2xl sm:rounded-full px-3.5 py-1.5 sm:py-2 flex items-center justify-between gap-1.5 sm:gap-2.5 pointer-events-auto shadow-md max-w-full overflow-x-auto">
         {/* Module Triggers */}
-        <div className="flex items-center gap-1 sm:gap-1.5">
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           {navItems.map((item) => {
             const isActive = activeOrbitModuleId === item.id;
             return (
@@ -66,7 +66,7 @@ export const PortfolioDock: React.FC<PortfolioDockProps> = ({
         <div className={`h-4 w-px mx-0.5 sm:mx-1 shrink-0 ${isDark ? 'bg-white/15' : 'bg-slate-300/80'}`} />
 
         {/* 3D 主角团切换（5 个手办模型） */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           {MODEL_PRESETS.map((model) => {
             const isCurrent = activeModelId === model.id;
             return (

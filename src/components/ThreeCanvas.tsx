@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { MODEL_PRESETS } from '../data/modelsConfig';
 import { getModelCandidateUrls } from '../utils/assetUrl';
 import {
@@ -95,16 +96,13 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   // References to 3D scene objects
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const controlsRef = useRef<OrbitControls | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const characterPivotRef = useRef<THREE.Group | null>(null);
-  const characterRootRef = useRef<THREE.Group | null>(null);
   const externalModelRef = useRef<THREE.Group | null>(null);
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
   const foxMixerRef = useRef<THREE.AnimationMixer | null>(null);
   const currentActionsRef = useRef<{ [key: string]: THREE.AnimationAction }>({});
-  const leftEyeGroupRef = useRef<THREE.Group | null>(null);
-  const rightEyeGroupRef = useRef<THREE.Group | null>(null);
-  const ahogeRef = useRef<THREE.Mesh | null>(null);
   const activeOrbitTargetRef = useRef<THREE.Group | null>(null);
 
   // Lights & Materials for theme adaptation
@@ -124,25 +122,6 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     seamMat?: THREE.MeshBasicMaterial;
     grooveMat?: THREE.MeshBasicMaterial;
     contactShadowMat?: THREE.MeshBasicMaterial;
-  }>({});
-
-  const outfitMeshesRef = useRef<{
-    skinMat?: THREE.MeshPhysicalMaterial;
-    hairMat?: THREE.MeshStandardMaterial;
-    topMat?: THREE.MeshPhysicalMaterial;
-    collarMat?: THREE.MeshStandardMaterial;
-    skirtMat?: THREE.MeshStandardMaterial;
-    shoeMat?: THREE.MeshStandardMaterial;
-    hoodiePocket?: THREE.Mesh;
-    hoodieBack?: THREE.Mesh;
-    sailorCollarGroup?: THREE.Group;
-    cardiganButtons?: THREE.Group;
-    starClip?: THREE.Mesh;
-    glasses?: THREE.Group;
-    beret?: THREE.Group;
-    headphones?: THREE.Group;
-    laptop?: THREE.Group;
-    camera?: THREE.Group;
   }>({});
 
   const orbitingItemsRef = useRef<THREE.Group[]>([]);
@@ -343,6 +322,20 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     renderer.toneMappingExposure = 0.7;
     rendererRef.current = renderer;
 
+    // Orbit controls: drag to orbit around the scene, wheel/pinch to zoom
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 0.72, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.enablePan = false;
+    controls.minDistance = 4.6;
+    controls.maxDistance = 13;
+    controls.minPolarAngle = 0.3;
+    controls.maxPolarAngle = Math.PI / 2 - 0.06;
+    controls.rotateSpeed = 0.75;
+    renderer.domElement.style.touchAction = 'none';
+    controlsRef.current = controls;
+
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
 
@@ -507,515 +500,6 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     characterPivot.position.set(0, 0.13, 0);
     scene.add(characterPivot);
     characterPivotRef.current = characterPivot;
-
-    const characterRoot = new THREE.Group();
-    characterPivot.add(characterRoot);
-    characterRootRef.current = characterRoot;
-    // 程序化黏土小人已由 5 个手办风 GLB 主角团取代，构建体保持隐藏（后续任务再彻底摘除）
-    characterRoot.visible = false;
-
-    // Polymer Clay / Porcelain Materials
-    const skinMat = new THREE.MeshPhysicalMaterial({
-      color: 0xffede3,
-      roughness: 0.28,
-      metalness: 0.0,
-      clearcoat: 0.35,
-      clearcoatRoughness: 0.15,
-      sheen: 0.3,
-      sheenColor: new THREE.Color(0xffdcd2),
-    });
-    const hairMat = new THREE.MeshStandardMaterial({
-      color: hairColor || currentPersona.outfit.hairColor,
-      roughness: 0.34,
-      metalness: 0.03,
-    });
-    const topMat = new THREE.MeshPhysicalMaterial({
-      color: currentPersona.outfit.topColor,
-      roughness: 0.38,
-      clearcoat: 0.18,
-      sheen: 0.4,
-    });
-    const collarMat = new THREE.MeshStandardMaterial({
-      color: currentPersona.outfit.collarColor,
-      roughness: 0.36,
-    });
-    const skirtMat = new THREE.MeshStandardMaterial({
-      color: currentPersona.outfit.skirtColor,
-      roughness: 0.38,
-    });
-    const shoeMat = new THREE.MeshStandardMaterial({
-      color: currentPersona.outfit.shoeColor,
-      roughness: 0.28,
-    });
-
-    outfitMeshesRef.current.skinMat = skinMat;
-    outfitMeshesRef.current.hairMat = hairMat;
-    outfitMeshesRef.current.topMat = topMat;
-    outfitMeshesRef.current.collarMat = collarMat;
-    outfitMeshesRef.current.skirtMat = skirtMat;
-    outfitMeshesRef.current.shoeMat = shoeMat;
-
-    // 1. Chubby Legs & Chunky Rounded Platform Shoes
-    [-0.19, 0.19].forEach((xPos) => {
-      const legGroup = new THREE.Group();
-      legGroup.position.set(xPos, 0, 0);
-
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.095, 0.38, 32), skinMat);
-      leg.position.set(0, 0.26, 0);
-      leg.castShadow = true;
-      legGroup.add(leg);
-
-      const sock = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.112, 0.102, 0.12, 32),
-        new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.45 })
-      );
-      sock.position.set(0, 0.14, 0);
-      legGroup.add(sock);
-
-      const frillTorus = new THREE.Mesh(
-        new THREE.TorusGeometry(0.11, 0.022, 12, 32),
-        new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.45 })
-      );
-      frillTorus.rotation.x = Math.PI / 2;
-      frillTorus.position.set(0, 0.19, 0);
-      legGroup.add(frillTorus);
-
-      const shoeGroup = new THREE.Group();
-      shoeGroup.position.set(0, 0.065, 0.035);
-
-      const shoeUpper = new THREE.Mesh(new THREE.SphereGeometry(0.135, 32, 32), shoeMat);
-      shoeUpper.scale.set(1.04, 0.78, 1.42);
-      shoeUpper.castShadow = true;
-      shoeGroup.add(shoeUpper);
-
-      const shoeSole = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.138, 0.142, 0.045, 32),
-        new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.55 })
-      );
-      shoeSole.scale.set(1.04, 1.0, 1.42);
-      shoeSole.position.y = -0.052;
-      shoeGroup.add(shoeSole);
-
-      legGroup.add(shoeGroup);
-      characterRoot.add(legGroup);
-    });
-
-    // 2. Pleated Skirt with Smooth Flared Clay Volume
-    const skirtGroup = new THREE.Group();
-    skirtGroup.position.set(0, 0.55, 0);
-
-    const skirtBase = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.46, 0.36, 40), skirtMat);
-    skirtBase.castShadow = true;
-    skirtGroup.add(skirtBase);
-
-    const pleatsCount = 18;
-    for (let p = 0; p < pleatsCount; p++) {
-      const angle = (p / pleatsCount) * Math.PI * 2;
-      const pleatBar = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.35, 0.035), skirtMat);
-      const r = 0.29 + (0.45 - 0.29) * 0.5;
-      pleatBar.position.set(Math.cos(angle) * r, 0, Math.sin(angle) * r);
-      pleatBar.rotation.y = -angle;
-      pleatBar.rotation.x = 0.22;
-      skirtGroup.add(pleatBar);
-    }
-    characterRoot.add(skirtGroup);
-
-    // 3. Rounded Chubby Torso
-    const torsoGroup = new THREE.Group();
-    torsoGroup.position.set(0, 0.88, 0);
-
-    const chestSphere = new THREE.Mesh(new THREE.SphereGeometry(0.29, 32, 32), topMat);
-    chestSphere.scale.set(1.02, 0.88, 0.88);
-    chestSphere.position.set(0, 0.08, 0);
-    chestSphere.castShadow = true;
-    torsoGroup.add(chestSphere);
-
-    const tummySphere = new THREE.Mesh(new THREE.SphereGeometry(0.32, 32, 32), topMat);
-    tummySphere.scale.set(1.05, 0.95, 0.96);
-    tummySphere.position.set(0, -0.06, 0.015);
-    tummySphere.castShadow = true;
-    torsoGroup.add(tummySphere);
-
-    // Explorer Details: Sailor Collar
-    const sailorCollarGroup = new THREE.Group();
-    sailorCollarGroup.position.set(0, 0.17, 0);
-
-    const collarFlap = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.32, 0.14, 32), collarMat);
-    sailorCollarGroup.add(collarFlap);
-
-    const backFlap = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.03, 0.22), collarMat);
-    backFlap.position.set(0, 0.02, -0.21);
-    backFlap.rotation.x = 0.18;
-    backFlap.castShadow = true;
-    sailorCollarGroup.add(backFlap);
-
-    const tieBow = new THREE.Mesh(new THREE.OctahedronGeometry(0.095, 1), collarMat);
-    tieBow.scale.set(1.3, 1.45, 0.55);
-    tieBow.position.set(0, -0.11, 0.29);
-    sailorCollarGroup.add(tieBow);
-
-    torsoGroup.add(sailorCollarGroup);
-    outfitMeshesRef.current.sailorCollarGroup = sailorCollarGroup;
-
-    // Creator Hoodie Details
-    const hoodiePocket = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.16, 0.08), topMat);
-    hoodiePocket.position.set(0, -0.08, 0.27);
-    hoodiePocket.visible = currentPersona.id === 'creator';
-    torsoGroup.add(hoodiePocket);
-    outfitMeshesRef.current.hoodiePocket = hoodiePocket;
-
-    const hoodieBack = new THREE.Mesh(new THREE.SphereGeometry(0.24, 24, 24), topMat);
-    hoodieBack.scale.set(1.1, 0.65, 0.6);
-    hoodieBack.position.set(0, 0.12, -0.25);
-    hoodieBack.visible = currentPersona.id === 'creator';
-    torsoGroup.add(hoodieBack);
-    outfitMeshesRef.current.hoodieBack = hoodieBack;
-
-    // Lifestyle Cardigan Details
-    const cardiganButtons = new THREE.Group();
-    [-0.08, 0.01, 0.1].forEach((by) => {
-      const btn = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.02, 0.02, 0.01, 16),
-        new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.8, roughness: 0.25 })
-      );
-      btn.rotation.x = Math.PI / 2;
-      btn.position.set(0, by, 0.295);
-      cardiganButtons.add(btn);
-    });
-    cardiganButtons.visible = currentPersona.id === 'lifestyle';
-    torsoGroup.add(cardiganButtons);
-    outfitMeshesRef.current.cardiganButtons = cardiganButtons;
-
-    characterRoot.add(torsoGroup);
-
-    // 4. Arms & Hands
-    [-0.36, 0.36].forEach((xPos, idx) => {
-      const armGroup = new THREE.Group();
-      armGroup.position.set(xPos, 1.04, 0.02);
-      armGroup.rotation.z = idx === 0 ? 0.35 : -0.35;
-      armGroup.rotation.x = 0.22;
-
-      const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.118, 0.34, 24), topMat);
-      sleeve.position.y = -0.15;
-      sleeve.castShadow = true;
-      armGroup.add(sleeve);
-
-      const sleeveCuff = new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.02, 12, 24), collarMat);
-      sleeveCuff.rotation.x = Math.PI / 2;
-      sleeveCuff.position.y = -0.3;
-      armGroup.add(sleeveCuff);
-
-      const handGroup = new THREE.Group();
-      handGroup.position.set(0, -0.38, 0);
-
-      const palm = new THREE.Mesh(new THREE.SphereGeometry(0.09, 24, 24), skinMat);
-      palm.scale.set(1.0, 1.05, 0.9);
-      handGroup.add(palm);
-
-      const thumb = new THREE.Mesh(new THREE.SphereGeometry(0.038, 16, 16), skinMat);
-      thumb.position.set(idx === 0 ? 0.065 : -0.065, 0.02, 0.04);
-      handGroup.add(thumb);
-
-      armGroup.add(handGroup);
-      characterRoot.add(armGroup);
-    });
-
-    // 5. Head Group with 3D Anime Face (Facing forward +Z!)
-    const headGroup = new THREE.Group();
-    headGroup.position.set(0, 1.62, 0);
-    characterRoot.add(headGroup);
-
-    const headSphere = new THREE.Mesh(new THREE.SphereGeometry(0.58, 64, 64), skinMat);
-    headSphere.scale.set(1.10, 0.98, 1.02);
-    headSphere.castShadow = true;
-    headGroup.add(headSphere);
-
-    [-0.32, 0.32].forEach((xPos) => {
-      const chubbyCheek = new THREE.Mesh(new THREE.SphereGeometry(0.24, 32, 32), skinMat);
-      chubbyCheek.scale.set(0.9, 0.85, 0.7);
-      chubbyCheek.position.set(xPos, -0.09, 0.27);
-      headGroup.add(chubbyCheek);
-    });
-
-    [-0.56, 0.56].forEach((xPos) => {
-      const ear = new THREE.Mesh(new THREE.SphereGeometry(0.115, 20, 20), skinMat);
-      ear.scale.set(0.38, 0.78, 0.58);
-      ear.position.set(xPos, -0.04, 0.02);
-      ear.rotation.y = xPos < 0 ? 0.28 : -0.28;
-      headGroup.add(ear);
-    });
-
-    [-0.28, 0.28].forEach((xPos) => {
-      const blushMat = new THREE.MeshBasicMaterial({
-        color: 0xff8e9e,
-        transparent: true,
-        opacity: 0.42,
-        depthWrite: false,
-      });
-      const blush = new THREE.Mesh(new THREE.CircleGeometry(0.12, 32), blushMat);
-      blush.position.set(xPos, -0.07, 0.54);
-      blush.rotation.y = xPos < 0 ? -0.28 : 0.28;
-      blush.rotation.x = -0.08;
-      headGroup.add(blush);
-    });
-
-    const nose = new THREE.Mesh(
-      new THREE.SphereGeometry(0.024, 16, 16),
-      new THREE.MeshStandardMaterial({ color: 0xf4a28c, roughness: 0.3 })
-    );
-    nose.position.set(0, -0.05, 0.61);
-    headGroup.add(nose);
-
-    const mouthMat = new THREE.MeshBasicMaterial({ color: 0xc95353 });
-    const mouthArc = new THREE.Mesh(
-      new THREE.TorusGeometry(0.048, 0.011, 16, 32, Math.PI * 0.7),
-      mouthMat
-    );
-    mouthArc.rotation.z = Math.PI * 1.15;
-    mouthArc.position.set(0, -0.155, 0.58);
-    headGroup.add(mouthArc);
-
-    // 3D Anime Eyes
-    const create3DEye = (isLeft: boolean): THREE.Group => {
-      const eyeGroup = new THREE.Group();
-      const xPos = isLeft ? -0.22 : 0.22;
-      eyeGroup.position.set(xPos, 0.04, 0.52);
-      eyeGroup.rotation.y = isLeft ? -0.22 : 0.22;
-      eyeGroup.rotation.x = -0.04;
-
-      const scleraMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-      const sclera = new THREE.Mesh(new THREE.SphereGeometry(0.155, 32, 32), scleraMat);
-      sclera.scale.set(0.92, 1.14, 0.22);
-      eyeGroup.add(sclera);
-
-      const irisGroup = new THREE.Group();
-      irisGroup.position.set(0, -0.01, 0.025);
-
-      const irisOuter = new THREE.Mesh(
-        new THREE.SphereGeometry(0.13, 32, 32),
-        new THREE.MeshStandardMaterial({ color: 0x4a2c1b, roughness: 0.2 })
-      );
-      irisOuter.scale.set(0.82, 1.02, 0.24);
-      irisGroup.add(irisOuter);
-
-      const irisGlow = new THREE.Mesh(
-        new THREE.SphereGeometry(0.11, 24, 24),
-        new THREE.MeshBasicMaterial({ color: 0xd49b6a })
-      );
-      irisGlow.scale.set(0.78, 0.55, 0.24);
-      irisGlow.position.set(0, -0.04, 0.015);
-      irisGroup.add(irisGlow);
-
-      const pupil = new THREE.Mesh(
-        new THREE.SphereGeometry(0.065, 24, 24),
-        new THREE.MeshBasicMaterial({ color: 0x180f0b })
-      );
-      pupil.scale.set(0.75, 0.95, 0.25);
-      pupil.position.set(0, 0.01, 0.028);
-      irisGroup.add(pupil);
-
-      const highlightBig = new THREE.Mesh(
-        new THREE.SphereGeometry(0.038, 16, 16),
-        new THREE.MeshBasicMaterial({ color: 0xffffff })
-      );
-      highlightBig.position.set(isLeft ? -0.04 : 0.04, 0.048, 0.04);
-      irisGroup.add(highlightBig);
-
-      const highlightSmall = new THREE.Mesh(
-        new THREE.SphereGeometry(0.02, 12, 12),
-        new THREE.MeshBasicMaterial({ color: 0xffffff })
-      );
-      highlightSmall.position.set(isLeft ? 0.035 : -0.035, -0.045, 0.04);
-      irisGroup.add(highlightSmall);
-
-      eyeGroup.add(irisGroup);
-
-      const lashMat = new THREE.MeshStandardMaterial({ color: 0x221513, roughness: 0.3 });
-      const lashArc = new THREE.Mesh(
-        new THREE.TorusGeometry(0.15, 0.018, 12, 32, Math.PI * 0.58),
-        lashMat
-      );
-      lashArc.rotation.z = Math.PI * 0.21;
-      lashArc.scale.x = isLeft ? 1 : -1;
-      lashArc.position.set(0, 0.082, 0.035);
-      eyeGroup.add(lashArc);
-
-      const browArc = new THREE.Mesh(
-        new THREE.TorusGeometry(0.14, 0.012, 10, 24, Math.PI * 0.44),
-        new THREE.MeshStandardMaterial({ color: hairColor || 0xb9aea8, roughness: 0.4 })
-      );
-      browArc.rotation.z = Math.PI * 0.28;
-      browArc.scale.x = isLeft ? 1 : -1;
-      browArc.position.set(0, 0.22, -0.01);
-      eyeGroup.add(browArc);
-
-      return eyeGroup;
-    };
-
-    const leftEye = create3DEye(true);
-    const rightEye = create3DEye(false);
-    headGroup.add(leftEye);
-    headGroup.add(rightEye);
-    leftEyeGroupRef.current = leftEye;
-    rightEyeGroupRef.current = rightEye;
-
-    // Hair Group (Firmly at back and crown, leaving front face completely open!)
-    const hairGroup = new THREE.Group();
-    headGroup.add(hairGroup);
-
-    // Back hair hemisphere only covering the back half of head
-    const hairBackShell = new THREE.Mesh(
-      new THREE.SphereGeometry(0.64, 32, 32, Math.PI * 0.5, Math.PI, 0, Math.PI),
-      hairMat
-    );
-    hairBackShell.position.set(0, 0.02, -0.06);
-    hairBackShell.castShadow = true;
-    hairGroup.add(hairBackShell);
-
-    // Front soft bangs
-    const bangsData = [
-      { x: -0.26, y: 0.36, z: 0.42, rx: 0.24, rz: -0.35, sx: 1.05, sy: 1.25, sz: 0.55 },
-      { x: -0.09, y: 0.42, z: 0.46, rx: 0.22, rz: -0.14, sx: 1.15, sy: 1.35, sz: 0.58 },
-      { x: 0.08, y: 0.42, z: 0.46, rx: 0.22, rz: 0.12, sx: 1.15, sy: 1.35, sz: 0.58 },
-      { x: 0.26, y: 0.36, z: 0.42, rx: 0.24, rz: 0.34, sx: 1.05, sy: 1.25, sz: 0.55 },
-    ];
-    bangsData.forEach((b) => {
-      const strand = new THREE.Mesh(new THREE.SphereGeometry(0.14, 24, 24), hairMat);
-      strand.scale.set(b.sx, b.sy, b.sz);
-      strand.position.set(b.x, b.y, b.z);
-      strand.rotation.x = b.rx;
-      strand.rotation.z = b.rz;
-      strand.castShadow = true;
-      hairGroup.add(strand);
-    });
-
-    // Inward-curling twin side locks
-    [-0.56, 0.56].forEach((xPos) => {
-      const sideLock = new THREE.Mesh(new THREE.SphereGeometry(0.13, 24, 24), hairMat);
-      sideLock.scale.set(0.7, 1.8, 0.8);
-      sideLock.position.set(xPos, 0.02, 0.12);
-      sideLock.rotation.z = xPos < 0 ? 0.2 : -0.2;
-      sideLock.castShadow = true;
-      hairGroup.add(sideLock);
-    });
-
-    const ahoge = new THREE.Mesh(
-      new THREE.TorusGeometry(0.16, 0.032, 16, 32, Math.PI * 1.3),
-      hairMat
-    );
-    ahoge.position.set(0.06, 0.66, 0.05);
-    ahoge.rotation.z = 0.62;
-    ahoge.castShadow = true;
-    hairGroup.add(ahoge);
-    ahogeRef.current = ahoge;
-
-    // Accessories
-    const starClip = new THREE.Mesh(
-      new THREE.OctahedronGeometry(0.095, 0),
-      new THREE.MeshStandardMaterial({
-        color: 0xfbbf24,
-        roughness: 0.18,
-        metalness: 0.75,
-        emissive: 0x5a3500,
-      })
-    );
-    starClip.scale.set(1.2, 1.2, 0.4);
-    starClip.position.set(-0.46, 0.22, 0.45);
-    starClip.rotation.y = -0.52;
-    headGroup.add(starClip);
-    outfitMeshesRef.current.starClip = starClip;
-
-    // Glasses
-    const glassesGroup = new THREE.Group();
-    const frameMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.2, metalness: 0.4 });
-    const lensMat = new THREE.MeshPhysicalMaterial({
-      color: 0xffffff,
-      transparent: true,
-      opacity: 0.25,
-      roughness: 0.1,
-      transmission: 0.8,
-    });
-    [-0.22, 0.22].forEach((xPos) => {
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.016, 12, 32), frameMat);
-      rim.position.set(xPos, 0.02, 0.565);
-      rim.rotation.y = xPos < 0 ? -0.18 : 0.18;
-      glassesGroup.add(rim);
-
-      const lens = new THREE.Mesh(new THREE.CircleGeometry(0.125, 24), lensMat);
-      lens.position.set(xPos, 0.02, 0.566);
-      lens.rotation.y = xPos < 0 ? -0.18 : 0.18;
-      glassesGroup.add(lens);
-    });
-    const bridge = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.16, 12), frameMat);
-    bridge.rotation.z = Math.PI / 2;
-    bridge.position.set(0, 0.03, 0.58);
-    glassesGroup.add(bridge);
-    glassesGroup.visible = accessories.glasses;
-    headGroup.add(glassesGroup);
-    outfitMeshesRef.current.glasses = glassesGroup;
-
-    // Beret
-    const beretGroup = new THREE.Group();
-    const beretMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.65 });
-    const beretDome = new THREE.Mesh(new THREE.SphereGeometry(0.54, 32, 24), beretMat);
-    beretDome.scale.set(1.18, 0.38, 1.15);
-    beretDome.position.set(-0.08, 0.56, 0.02);
-    beretDome.rotation.z = 0.2;
-    beretGroup.add(beretDome);
-    beretGroup.visible = accessories.beret;
-    headGroup.add(beretGroup);
-    outfitMeshesRef.current.beret = beretGroup;
-
-    // Headphones
-    const headphonesGroup = new THREE.Group();
-    const hpBandMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.3, metalness: 0.6 });
-    const hpCupMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.4 });
-    const band = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.025, 12, 48, Math.PI), hpBandMat);
-    band.position.set(0, 0.08, 0.02);
-    band.rotation.z = Math.PI;
-    headphonesGroup.add(band);
-    [-0.64, 0.64].forEach((xPos) => {
-      const earcup = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.065, 24), hpCupMat);
-      earcup.rotation.z = Math.PI / 2;
-      earcup.position.set(xPos, 0.0, 0.02);
-      headphonesGroup.add(earcup);
-    });
-    headphonesGroup.visible = accessories.headphones;
-    headGroup.add(headphonesGroup);
-    outfitMeshesRef.current.headphones = headphonesGroup;
-
-    // Props: Laptop & Camera
-    const laptopGroup = new THREE.Group();
-    const laptopMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8, roughness: 0.2 });
-    const basePlate = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.018, 0.26), laptopMat);
-    laptopGroup.add(basePlate);
-    const screenPlate = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.25, 0.014), laptopMat);
-    screenPlate.position.set(0, 0.12, -0.13);
-    screenPlate.rotation.x = -0.32;
-    laptopGroup.add(screenPlate);
-    laptopGroup.position.set(0.62, 0.92, 0.35);
-    laptopGroup.rotation.y = -0.45;
-    laptopGroup.visible = currentPersona.outfit.propType === 'laptop';
-    characterRoot.add(laptopGroup);
-    outfitMeshesRef.current.laptop = laptopGroup;
-
-    const cameraGroup = new THREE.Group();
-    const camBody = new THREE.Mesh(
-      new THREE.BoxGeometry(0.28, 0.19, 0.14),
-      new THREE.MeshStandardMaterial({ color: 0x4b3832, roughness: 0.5 })
-    );
-    cameraGroup.add(camBody);
-    const camLens = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.065, 0.065, 0.09, 24),
-      new THREE.MeshStandardMaterial({ color: 0xd4a373, metalness: 0.5, roughness: 0.3 })
-    );
-    camLens.rotation.x = Math.PI / 2;
-    camLens.position.set(0, 0, 0.09);
-    cameraGroup.add(camLens);
-    cameraGroup.position.set(0, 0.78, 0.34);
-    cameraGroup.visible = currentPersona.outfit.propType === 'camera';
-    characterRoot.add(cameraGroup);
-    outfitMeshesRef.current.camera = cameraGroup;
 
     // Hit collider for character rotation drag
     const hitCylinder = new THREE.Mesh(
@@ -1349,16 +833,15 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       updateMouseCoords(e);
       isDraggingRef.current = true;
       dragStartXRef.current = e.clientX;
+      // Let OrbitControls own camera drag; suppress hover feedback while dragging
+      if (controlsRef.current) controlsRef.current.enabled = true;
     };
 
     const handlePointerMove = (e: PointerEvent) => {
       updateMouseCoords(e);
 
       if (isDraggingRef.current) {
-        const deltaX = e.clientX - dragStartXRef.current;
-        dragStartXRef.current = e.clientX;
-        targetRotationYRef.current += deltaX * 0.013;
-        return;
+        return; // camera orbit handled by OrbitControls
       }
 
       if (!cameraRef.current) return;
@@ -1472,13 +955,15 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     // Animation Loop
     // -------------------------------------------------------------------------
     const clock = new THREE.Clock();
-    let blinkTimer = 0;
     let animId: number;
 
     const animate = () => {
       animId = requestAnimationFrame(animate);
       const delta = Math.min(clock.getDelta(), 0.05);
       const elapsed = clock.getElapsedTime();
+
+      // Update orbit controls damping
+      if (controlsRef.current) controlsRef.current.update();
 
       // Update Skeletal Animations (Character & Fox)
       if (mixerRef.current) {
@@ -1549,31 +1034,6 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           3.6,
           Math.cos(fillAngle) * 4.4
         );
-      }
-
-      // Natural eye blinking on procedural 3D eyes
-      blinkTimer += delta;
-      if (blinkTimer > 3.4) {
-        const blinkPhase = (blinkTimer - 3.4) / 0.14;
-        if (blinkPhase < 1) {
-          const scaleY = Math.max(0.06, Math.abs(Math.cos(blinkPhase * Math.PI)));
-          if (leftEyeGroupRef.current) leftEyeGroupRef.current.scale.y = scaleY;
-          if (rightEyeGroupRef.current) rightEyeGroupRef.current.scale.y = scaleY;
-        } else {
-          if (leftEyeGroupRef.current) leftEyeGroupRef.current.scale.y = 1;
-          if (rightEyeGroupRef.current) rightEyeGroupRef.current.scale.y = 1;
-          blinkTimer = 0;
-        }
-      }
-
-      // Ahoge gentle swaying
-      if (ahogeRef.current) {
-        ahogeRef.current.rotation.z = 0.62 + Math.sin(elapsed * 3.2) * 0.06;
-      }
-
-      // Prop float
-      if (outfitMeshesRef.current.laptop?.visible) {
-        outfitMeshesRef.current.laptop.position.y = 0.92 + Math.sin(elapsed * 3.0) * 0.035;
       }
 
       // Orbiting items
@@ -1718,6 +1178,10 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
     return () => {
       cancelAnimationFrame(animId);
+      if (controlsRef.current) {
+        controlsRef.current.dispose();
+        controlsRef.current = null;
+      }
       domEl.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
@@ -1802,40 +1266,11 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     });
   }, [themeMode, currentPersona]);
 
-  // Sync Persona outfit colors & jump hop on persona change
+  // Sync Persona colors & jump hop on persona change
   useEffect(() => {
-    const o = currentPersona.outfit;
-    const meshes = outfitMeshesRef.current;
-    if (meshes.topMat) meshes.topMat.color.setHex(o.topColor);
-    if (meshes.collarMat) meshes.collarMat.color.setHex(o.collarColor);
-    if (meshes.skirtMat) meshes.skirtMat.color.setHex(o.skirtColor);
-    if (meshes.shoeMat) meshes.shoeMat.color.setHex(o.shoeColor);
-    if (meshes.hairMat) meshes.hairMat.color.setHex(hairColor || o.hairColor);
-
     if (pedestalMeshesRef.current.seamMat) {
       pedestalMeshesRef.current.seamMat.color.setHex(currentPersona.orbitColor);
     }
-
-    if (meshes.sailorCollarGroup) {
-      meshes.sailorCollarGroup.visible = currentPersona.id === 'explorer';
-    }
-    if (meshes.hoodiePocket) {
-      meshes.hoodiePocket.visible = currentPersona.id === 'creator';
-    }
-    if (meshes.hoodieBack) {
-      meshes.hoodieBack.visible = currentPersona.id === 'creator';
-    }
-    if (meshes.cardiganButtons) {
-      meshes.cardiganButtons.visible = currentPersona.id === 'lifestyle';
-    }
-
-    if (meshes.starClip) meshes.starClip.visible = accessories.starClip;
-    if (meshes.glasses) meshes.glasses.visible = accessories.glasses;
-    if (meshes.beret) meshes.beret.visible = accessories.beret;
-    if (meshes.headphones) meshes.headphones.visible = accessories.headphones;
-
-    if (meshes.laptop) meshes.laptop.visible = o.propType === 'laptop';
-    if (meshes.camera) meshes.camera.visible = o.propType === 'camera';
 
     // Play persona hop / wave action if available
     targetRotationYRef.current += Math.PI * 2;
@@ -1949,10 +1384,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
             idleAction.play();
           }
 
-          // Hide procedural mesh and show loaded GLB
-          if (characterRootRef.current) {
-            characterRootRef.current.visible = false;
-          }
+          // Show loaded GLB
           characterPivotRef.current.add(modelScene);
           audioEngine.playSFX('dressup');
           callbacksRef.current.onModelLoadedMessage?.(`已载入：${modelDisplayName}`);
