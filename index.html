@@ -1,0 +1,2163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D 互动换装个人星轨展台 · Interactive 3D Avatar Portfolio</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --accent: #5ba8ff;
+      --accent-soft: rgba(91, 168, 255, 0.22);
+      --bg-inner: #f5f6f9;
+      --bg-outer: #e4e7ef;
+    }
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: radial-gradient(circle at 50% 42%, var(--bg-inner) 0%, var(--bg-outer) 100%);
+      color: #2c3242;
+      transition: background 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      cursor: grab;
+    }
+    #canvas-container:active {
+      cursor: grabbing;
+    }
+    /* Glassmorphism surfaces matching the reference video */
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.68);
+      backdrop-filter: blur(20px) saturate(140%);
+      -webkit-backdrop-filter: blur(20px) saturate(140%);
+      border: 1.5px solid rgba(255, 255, 255, 0.88);
+      box-shadow:
+        0 18px 45px -12px rgba(35, 48, 78, 0.12),
+        0 2px 10px rgba(35, 48, 78, 0.05),
+        inset 0 1px 1px rgba(255, 255, 255, 0.95);
+    }
+    .glass-modal {
+      background: rgba(248, 250, 255, 0.56);
+      backdrop-filter: blur(22px) saturate(150%);
+      -webkit-backdrop-filter: blur(22px) saturate(150%);
+      border: 1.5px solid rgba(255, 255, 255, 0.92);
+      box-shadow:
+        0 26px 65px -12px rgba(28, 42, 72, 0.18),
+        0 4px 16px rgba(28, 42, 72, 0.06),
+        inset 0 1.5px 2px rgba(255, 255, 255, 0.98);
+    }
+    .glass-pill {
+      background: rgba(255, 255, 255, 0.78);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.92);
+      box-shadow: 0 8px 24px -6px rgba(31, 45, 74, 0.1);
+    }
+    /* Floating 3D audio waveform badge (matches 00:05-00:08 of reference video) */
+    #floating-wave-badge {
+      position: fixed;
+      z-index: 15;
+      pointer-events: none;
+      transform: translate(-50%, -120%) scale(0.85);
+      opacity: 0;
+      transition: opacity 0.28s ease, transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    #floating-wave-badge.active {
+      opacity: 1;
+      transform: translate(-50%, -135%) scale(1);
+    }
+    #floating-wave-badge::after {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 6px 6px 0 6px;
+      border-style: solid;
+      border-color: rgba(255, 255, 255, 0.92) transparent transparent transparent;
+    }
+    /* Animated soundwave bars */
+    .wave-bar {
+      width: 2.5px;
+      background: #4a5568;
+      border-radius: 999px;
+      transition: height 0.15s ease;
+    }
+    .wave-animating .wave-bar {
+      animation: waveBounce 0.75s ease-in-out infinite alternate;
+    }
+    .wave-animating .wave-bar:nth-child(1) { animation-delay: 0.0s; }
+    .wave-animating .wave-bar:nth-child(2) { animation-delay: 0.12s; }
+    .wave-animating .wave-bar:nth-child(3) { animation-delay: 0.24s; }
+    .wave-animating .wave-bar:nth-child(4) { animation-delay: 0.08s; }
+    .wave-animating .wave-bar:nth-child(5) { animation-delay: 0.20s; }
+    .wave-animating .wave-bar:nth-child(6) { animation-delay: 0.32s; }
+    .wave-animating .wave-bar:nth-child(7) { animation-delay: 0.15s; }
+    .wave-animating .wave-bar:nth-child(8) { animation-delay: 0.05s; }
+    .wave-animating .wave-bar:nth-child(9) { animation-delay: 0.27s; }
+    @keyframes waveBounce {
+      0% { transform: scaleY(0.35); opacity: 0.55; }
+      100% { transform: scaleY(1.35); opacity: 1; }
+    }
+    /* Blurred text placeholder effect (matches video 00:06-00:08 aesthetic option) */
+    .video-blur-mode .blur-target {
+      filter: blur(3.2px);
+      opacity: 0.68;
+      letter-spacing: 0.02em;
+      transition: filter 0.35s ease, opacity 0.35s ease;
+    }
+    .video-blur-mode .blur-target:hover {
+      filter: blur(0px);
+      opacity: 1;
+    }
+    /* Modal transition */
+    #info-modal-wrapper {
+      pointer-events: none;
+      opacity: 0;
+      transform: translate(-50%, -46%) scale(0.92);
+      transition: opacity 0.34s cubic-bezier(0.22, 1, 0.36, 1), transform 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    #info-modal-wrapper.open {
+      pointer-events: auto;
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    /* Hover label for 3D orbiting objects */
+    #orbit-hover-tooltip {
+      position: fixed;
+      z-index: 12;
+      pointer-events: none;
+      opacity: 0;
+      transform: translate(-50%, -140%);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    #orbit-hover-tooltip.visible {
+      opacity: 1;
+      transform: translate(-50%, -155%);
+    }
+    /* Custom scrollbar for drawers */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.25);
+      border-radius: 999px;
+    }
+  </style>
+</head>
+<body class="relative select-none">
+
+  <!-- 3D WebGL Scene Container -->
+  <div id="canvas-container" aria-label="3D 角色与星轨交互画布"></div>
+
+  <!-- Floating 3D Audio Waveform Badge (Video 00:05-00:08) -->
+  <div id="floating-wave-badge" class="glass-pill px-3.5 py-2 rounded-xl flex items-center gap-1 shadow-md wave-animating">
+    <span class="wave-bar h-2"></span>
+    <span class="wave-bar h-3.5"></span>
+    <span class="wave-bar h-2.5"></span>
+    <span class="wave-bar h-1.5"></span>
+    <span class="wave-bar h-4"></span>
+    <span class="wave-bar h-2.5"></span>
+    <span class="wave-bar h-1.5"></span>
+    <span class="wave-bar h-3.5"></span>
+    <span class="wave-bar h-2"></span>
+  </div>
+
+  <!-- Hover Tooltip for 3D Orbiting Items -->
+  <div id="orbit-hover-tooltip" class="glass-pill px-3 py-1.5 rounded-full text-xs font-medium text-slate-700 flex items-center gap-1.5 shadow-sm">
+    <span id="tooltip-emoji">🪐</span>
+    <span id="tooltip-title">关于我</span>
+    <span class="text-[10px] text-slate-400">点击探索</span>
+  </div>
+
+  <!-- Top Navigation & Status Bar -->
+  <header class="fixed top-0 left-0 right-0 z-20 px-4 sm:px-6 pt-3.5 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+    <!-- Left: Identity Badge & Current Persona Status -->
+    <div class="glass-panel rounded-2xl px-3.5 py-2 flex items-center gap-3 pointer-events-auto">
+      <div id="persona-avatar-dot" class="w-9 h-9 rounded-xl flex items-center justify-center text-lg shadow-inner transition-colors duration-500" style="background: rgba(91, 168, 255, 0.18);">
+        ✨
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span id="header-user-name" class="font-bold text-sm text-slate-800 tracking-tight">林星染 · Xingran</span>
+          <span id="header-persona-tag" class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-sky-100/90 text-sky-700 transition-colors duration-300">
+            探索者 · 日常态
+          </span>
+        </div>
+        <p id="header-persona-desc" class="text-[11px] text-slate-500 mt-0.5">
+          拖拽中央角色可 360° 旋转 · 点击环绕物触发声波与介绍卡
+        </p>
+      </div>
+    </div>
+
+    <!-- Right: Audio Controls, Blur Demo Toggle, Model Upload & GitHub Guide -->
+    <div class="flex items-center gap-2 pointer-events-auto flex-wrap">
+      <!-- BGM Toggle -->
+      <button id="btn-bgm-toggle" type="button" class="glass-pill px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-white/90 transition flex items-center gap-1.5" title="切换轻柔钢琴/八音盒背景音乐">
+        <span id="bgm-icon">🎵</span>
+        <span id="bgm-label" class="hidden sm:inline">治愈 BGM: 待唤醒</span>
+      </button>
+
+      <!-- UI SFX Toggle -->
+      <button id="btn-sfx-toggle" type="button" class="glass-pill px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-white/90 transition flex items-center gap-1.5" title="切换清脆游戏 UI 音效">
+        <span id="sfx-icon">🔔</span>
+        <span id="sfx-label" class="hidden sm:inline">UI 音效: 开</span>
+      </button>
+
+      <!-- Video Blur Placeholder Style Toggle -->
+      <button id="btn-blur-toggle" type="button" class="glass-pill px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-white/90 transition flex items-center gap-1.5" title="切换参考视频同款模糊文字占位风格与清晰文字">
+        <span id="blur-icon">👁️</span>
+        <span id="blur-label" class="hidden md:inline">清晰正文</span>
+      </button>
+
+      <!-- Customize / GitHub Guide Drawer Button -->
+      <button id="btn-open-drawer" type="button" class="glass-pill px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-white/90 transition flex items-center gap-1.5">
+        <span>⚙️</span>
+        <span>配置与 GitHub 部署</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Left Quick Orbit Trigger Chips (Easy access in addition to clicking 3D orbiting objects) -->
+  <aside class="fixed left-4 top-1/2 -translate-y-1/2 z-20 hidden lg:flex flex-col gap-2 pointer-events-auto">
+    <div class="text-[11px] font-medium text-slate-400 px-1 mb-0.5 tracking-wider uppercase">星轨模块导航</div>
+    <button type="button" data-orbit-id="about" class="orbit-quick-btn glass-pill px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-white/95 transition flex items-center gap-2 text-left group">
+      <span class="text-base group-hover:scale-110 transition-transform">🪐</span>
+      <div>
+        <div class="font-semibold text-slate-800">关于我</div>
+        <div class="text-[10px] text-slate-400">内轨 · 环绕星球</div>
+      </div>
+    </button>
+    <button type="button" data-orbit-id="projects" class="orbit-quick-btn glass-pill px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-white/95 transition flex items-center gap-2 text-left group">
+      <span class="text-base group-hover:scale-110 transition-transform">✈️</span>
+      <div>
+        <div class="font-semibold text-slate-800">作品与经历</div>
+        <div class="text-[10px] text-slate-400">中轨 · 折纸飞机</div>
+      </div>
+    </button>
+    <button type="button" data-orbit-id="hobbies" class="orbit-quick-btn glass-pill px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-white/95 transition flex items-center gap-2 text-left group">
+      <span class="text-base group-hover:scale-110 transition-transform">🦊</span>
+      <div>
+        <div class="font-semibold text-slate-800">兴趣与日常</div>
+        <div class="text-[10px] text-slate-400">外轨 · 萌系小狐狸</div>
+      </div>
+    </button>
+    <button type="button" data-orbit-id="contact" class="orbit-quick-btn glass-pill px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-white/95 transition flex items-center gap-2 text-left group">
+      <span class="text-base group-hover:scale-110 transition-transform">🎧</span>
+      <div>
+        <div class="font-semibold text-slate-800">联系与电台</div>
+        <div class="text-[10px] text-slate-400">外轨 · 悬浮星音盒</div>
+      </div>
+    </button>
+  </aside>
+
+  <!-- Center Frosted-Glass Info Modal (Matches 00:06-00:08 of Reference Video) -->
+  <div id="info-modal-wrapper" class="fixed left-1/2 top-1/2 z-30 w-[92vw] max-w-[490px]">
+    <div id="info-modal-card" class="glass-modal rounded-[26px] p-6 sm:p-7 relative overflow-hidden">
+      <!-- Subtle top highlight bar -->
+      <div id="modal-accent-bar" class="absolute top-0 left-6 right-6 h-1 rounded-b-full opacity-75 transition-colors duration-300" style="background: linear-gradient(90deg, #5ba8ff, #9fd4ff);"></div>
+
+      <!-- Close Button (Top Right, matching reference video) -->
+      <button id="btn-close-modal" type="button" class="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-white/60 transition text-lg leading-none" aria-label="关闭弹窗">
+        ✕
+      </button>
+
+      <!-- Modal Header -->
+      <div class="flex items-center gap-2.5 mb-3 pr-8">
+        <span id="modal-icon" class="text-xl">✈️</span>
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 id="modal-title" class="text-lg font-bold text-slate-800 tracking-tight">作品与经历 · Projects</h2>
+            <span id="modal-persona-badge" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-700">
+              探索者视角
+            </span>
+          </div>
+          <p id="modal-subtitle" class="text-xs text-slate-500">点击右下角喇叭可播放真人语音 / 中文朗读</p>
+        </div>
+      </div>
+
+      <!-- Modal Body Content (Supports both Clean Reading & Video Blur Placeholder Demo) -->
+      <div id="modal-body" class="blur-target text-sm text-slate-700 leading-relaxed space-y-2.5 pr-10 max-h-[44vh] overflow-y-auto">
+        <p id="modal-text-main">
+          这里展示当前身份状态下的核心个人介绍内容。切换下方角色服装，弹窗内容也会随之联动变化。
+        </p>
+        <div id="modal-tags" class="flex flex-wrap gap-1.5 pt-1"></div>
+        <div id="modal-links" class="pt-1 flex flex-wrap gap-2"></div>
+      </div>
+
+      <!-- Bottom-Right Audio / Voice Readout Button (Matches Reference Video Speaker Icon) -->
+      <div class="mt-4 flex items-center justify-between pt-2 border-t border-white/50">
+        <div class="flex items-center gap-2 text-[11px] text-slate-500">
+          <span id="voice-status-dot" class="w-2 h-2 rounded-full bg-slate-300"></span>
+          <span id="voice-status-text">点击右侧喇叭收听语音介绍</span>
+        </div>
+
+        <button id="btn-play-voice" type="button" class="w-10 h-10 rounded-full bg-white/85 hover:bg-white shadow-md border border-white flex items-center justify-center text-slate-700 hover:scale-105 active:scale-95 transition group" title="播放语音介绍 / 朗读">
+          <svg id="speaker-svg" class="w-5 h-5 text-slate-700 group-hover:text-sky-600 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path id="speaker-wave-1" d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            <path id="speaker-wave-2" d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Wardrobe & Dress-Up Controls ("身份联动模式"换装栏) -->
+  <footer class="fixed bottom-0 left-0 right-0 z-20 px-4 pb-4 flex flex-col items-center gap-2 pointer-events-none">
+    <!-- Accessory Micro-Toggles (Free Dress-Up Tweaks on top of Persona Outfit) -->
+    <div class="glass-pill rounded-full px-3 py-1.5 flex items-center gap-1.5 sm:gap-2 pointer-events-auto shadow-sm">
+      <span class="text-[11px] font-semibold text-slate-500 px-1.5">配饰穿搭 DIY:</span>
+      <button type="button" data-acc="starClip" class="acc-toggle-btn px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100/90 text-amber-800 transition flex items-center gap-1">
+        <span>⭐</span><span>星星发夹</span>
+      </button>
+      <button type="button" data-acc="glasses" class="acc-toggle-btn px-2.5 py-1 rounded-full text-xs font-medium text-slate-600 hover:bg-white/70 transition flex items-center gap-1">
+        <span>👓</span><span>极客眼镜</span>
+      </button>
+      <button type="button" data-acc="beret" class="acc-toggle-btn px-2.5 py-1 rounded-full text-xs font-medium text-slate-600 hover:bg-white/70 transition flex items-center gap-1">
+        <span>🎨</span><span>画家贝雷帽</span>
+      </button>
+      <button type="button" data-acc="headphones" class="acc-toggle-btn px-2.5 py-1 rounded-full text-xs font-medium text-slate-600 hover:bg-white/70 transition flex items-center gap-1">
+        <span>🎧</span><span>头戴耳机</span>
+      </button>
+      <button type="button" id="btn-hair-color" class="px-2.5 py-1 rounded-full text-xs font-medium text-slate-600 hover:bg-white/70 transition flex items-center gap-1" title="切换角色发色">
+        <span>🎨</span><span>换发色</span>
+      </button>
+    </div>
+
+    <!-- Main Persona Outfit Switcher (Identity-Linked Mode) -->
+    <div class="glass-panel rounded-2xl p-1.5 flex items-center gap-1.5 sm:gap-2 pointer-events-auto max-w-full overflow-x-auto">
+      <button type="button" data-persona="explorer" class="persona-btn px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 bg-white shadow-sm text-slate-800">
+        <span class="text-base">✨</span>
+        <div class="text-left">
+          <div>水手学院装 · 探索者</div>
+          <div class="text-[10px] font-normal text-slate-500">综合简介与初心</div>
+        </div>
+      </button>
+
+      <button type="button" data-persona="creator" class="persona-btn px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 text-slate-600 hover:bg-white/60">
+        <span class="text-base">💻</span>
+        <div class="text-left">
+          <div>极客卫衣 · 创造者</div>
+          <div class="text-[10px] font-normal text-slate-500">技术栈与开源作品</div>
+        </div>
+      </button>
+
+      <button type="button" data-persona="lifestyle" class="persona-btn px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 text-slate-600 hover:bg-white/60">
+        <span class="text-base">🦊</span>
+        <div class="text-left">
+          <div>暖阳针织 · 生活家</div>
+          <div class="text-[10px] font-normal text-slate-500">摄影、游戏与灵感</div>
+        </div>
+      </button>
+
+      <!-- Mobile Quick Orbit Menu Trigger -->
+      <button type="button" id="btn-cycle-orbit" class="lg:hidden px-3 py-2 rounded-xl text-xs font-semibold bg-sky-50 text-sky-700 hover:bg-sky-100 transition flex items-center gap-1">
+        <span>🪐</span>
+        <span>切换星球卡片</span>
+      </button>
+    </div>
+  </footer>
+
+  <!-- Right Configuration & GitHub Deployment Drawer -->
+  <div id="config-drawer-backdrop" class="fixed inset-0 bg-slate-900/20 backdrop-blur-xs z-40 hidden opacity-0 transition-opacity duration-300"></div>
+  <aside id="config-drawer" class="fixed top-0 right-0 bottom-0 w-full max-w-md glass-panel z-50 translate-x-full transition-transform duration-300 flex flex-col">
+    <div class="p-5 border-b border-slate-200/70 flex items-center justify-between">
+      <div>
+        <h3 class="font-bold text-base text-slate-800">个人数据配置 & GitHub 部署</h3>
+        <p class="text-xs text-slate-500 mt-0.5">纯前端零后端架构 · 支持导入真人语音与外部 3D 模型</p>
+      </div>
+      <button id="btn-close-drawer" type="button" class="w-8 h-8 rounded-full hover:bg-slate-200/60 flex items-center justify-center text-slate-600">
+        ✕
+      </button>
+    </div>
+
+    <div class="p-5 overflow-y-auto flex-1 space-y-5 text-xs text-slate-700">
+      <!-- 1. Custom Voice Upload / Test -->
+      <div class="p-3.5 rounded-2xl bg-white/75 border border-white shadow-xs space-y-2">
+        <div class="font-semibold text-slate-800 flex items-center gap-1.5">
+          <span>🎙️</span>
+          <span>弹窗 🔊 真人语音 / TTS 朗读设置</span>
+        </div>
+        <p class="text-slate-500 leading-relaxed">
+          你可以上传一段自己的真人语音介绍（<code>.mp3</code> / <code>.wav</code>）在当前页面直接试听；未上传时，点击弹窗右下角 🔊 会自动使用浏览器中文语音合成（TTS）朗读当前卡片文字。
+        </p>
+        <div class="flex items-center gap-2 pt-1">
+          <label class="px-3 py-1.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-medium cursor-pointer transition inline-flex items-center gap-1.5">
+            <span>上传真人录音试听</span>
+            <input id="input-voice-file" type="file" accept="audio/*" class="hidden" />
+          </label>
+          <button id="btn-clear-voice" type="button" class="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition">
+            切回智能朗读
+          </button>
+        </div>
+        <div id="custom-voice-status" class="text-[11px] text-emerald-600 hidden"></div>
+      </div>
+
+      <!-- 2. External 3D Model (.glb / .gltf) Loader -->
+      <div class="p-3.5 rounded-2xl bg-white/75 border border-white shadow-xs space-y-2">
+        <div class="font-semibold text-slate-800 flex items-center gap-1.5">
+          <span>🧊</span>
+          <span>外部 3D 角色模型替换接口 (.glb / .gltf)</span>
+        </div>
+        <p class="text-slate-500 leading-relaxed">
+          初版默认内置了<strong>纯代码粘土风 Q 版小人</strong>（无需下载外部大文件，秒开即玩）。如果你后续从 Sketchfab、Blender 或 KayKit 准备好了 <code>.glb</code> 模型，可以在此直接加载预览，或放进仓库目录配置加载：
+        </p>
+        <div class="flex items-center gap-2 pt-1">
+          <label class="px-3 py-1.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-medium cursor-pointer transition inline-flex items-center gap-1.5">
+            <span>加载本地 .glb 模型</span>
+            <input id="input-glb-file" type="file" accept=".glb,.gltf" class="hidden" />
+          </label>
+          <button id="btn-reset-model" type="button" class="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition">
+            恢复内置粘土小人
+          </button>
+        </div>
+      </div>
+
+      <!-- 3. Quick Profile Text Editor -->
+      <div class="p-3.5 rounded-2xl bg-white/75 border border-white shadow-xs space-y-3">
+        <div class="font-semibold text-slate-800 flex items-center gap-1.5">
+          <span>✏️</span>
+          <span>快速修改我的昵称与简介（实时生效）</span>
+        </div>
+        <div>
+          <label class="block text-[11px] text-slate-500 mb-1" for="input-profile-name">左上角展示昵称</label>
+          <input id="input-profile-name" type="text" value="林星染 · Xingran" class="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-sky-400" />
+        </div>
+        <div>
+          <label class="block text-[11px] text-slate-500 mb-1" for="input-about-text">🪐 星球（关于我）当前身份内容</label>
+          <textarea id="input-about-text" rows="3" class="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-sky-400"></textarea>
+        </div>
+        <button id="btn-save-profile" type="button" class="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-semibold transition">
+          应用修改并预览
+        </button>
+      </div>
+
+      <!-- 4. Why Zero-Backend & How to Deploy to GitHub Pages -->
+      <div class="p-3.5 rounded-2xl bg-slate-800 text-slate-100 space-y-2">
+        <div class="font-semibold text-sky-300 flex items-center gap-1.5">
+          <span>🚀</span>
+          <span>为什么不需要后端？如何传到 GitHub？</span>
+        </div>
+        <p class="text-[11px] text-slate-300 leading-relaxed">
+          个人展示与换装交互的所有状态、3D 渲染、UI 音效与语音都在访客浏览器本地运行，<strong>完全不需要购买云服务器或搭建后端数据库</strong>。
+        </p>
+        <ol class="list-decimal list-inside space-y-1 text-[11px] text-slate-300">
+          <li>在 GitHub 新建一个公开仓库（如 <code>my-3d-space</code> 或 <code>你的用户名.github.io</code>）。</li>
+          <li>将本项目的 <code>index.html</code>（以及可选的 <code>assets/</code> 录音或模型文件）上传到仓库根目录。</li>
+          <li>进入仓库 <strong>Settings → Pages</strong>，Source 选择 <code>main</code> 分支保存，1 分钟后即可获得全球可访问的 HTTPS 个人网站链接！</li>
+        </ol>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Toast Notification -->
+  <div id="toast-msg" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 glass-pill px-4 py-2 rounded-full text-xs font-medium text-slate-800 shadow-lg opacity-0 pointer-events-none transition-all duration-300">
+    提示信息
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. PERSONAL PORTFOLIO DATA & IDENTITY-LINKED CONFIG (身份联动配置表)
+    // =========================================================================
+    const PROFILE_CONFIG = {
+      name: '林星染 · Xingran',
+      customVoiceBlobUrl: null,
+      personas: {
+        explorer: {
+          id: 'explorer',
+          name: '探索者 · 日常态',
+          emoji: '✨',
+          badgeClass: 'bg-sky-100/90 text-sky-700',
+          accentHex: '#5ba8ff',
+          orbitColor: 0x67b2ff,
+          bgInner: '#f6f7fb',
+          bgOuter: '#e3e7f1',
+          desc: '水手领学院穿搭 · 拖拽角色 360° 旋转，点击轨道星球解锁自我介绍',
+          outfit: {
+            topColor: 0xf7f9fc,
+            collarColor: 0x3b5998,
+            skirtColor: 0x344966,
+            shoeColor: 0x4a5568,
+            hairColor: 0xb9aea8,
+            starClip: true,
+            glasses: false,
+            beret: false,
+            headphones: false,
+            propType: 'none'
+          },
+          modules: {
+            about: {
+              title: '关于我 · 初心探索者',
+              subtitle: '🪐 环绕星球 · 个人综合档案',
+              text: '你好呀！欢迎来到我的 3D 个人星轨空间。我不喜欢把自我介绍写成冷冰冰的长篇文字简历，所以把这个小展台做成了可交互的游戏化空间。平时我是一个对新奇交互、创意编程和美学设计充满好奇心的探索者，喜欢把脑海里的奇思妙想变成能被触摸和听见的数字作品。',
+              tags: ['✨ 创意开发者', '🎨 交互体验控', '🌱 终身学习者', '🌏 远程协作友好'],
+              links: []
+            },
+            projects: {
+              title: '成长轨迹与代表作 · 探索篇',
+              subtitle: '✈️ 折纸飞机 · 经历时间轴',
+              text: '每一架纸飞机都代表着一段已经起飞的旅程：从最初动手搭建第一个静态网页，到深入钻研 WebGL / Three.js 三维交互与前端工程化。点击下方「极客卫衣 · 创造者」给角色换装，可以查看更硬核的技术栈与开源项目细节！',
+              tags: ['2024-至今 · 独立创意开发', 'Web 3D 交互实验', '游戏化网页设计'],
+              links: [
+                { label: '切换至「创造者」查看技术细节 →', actionPersona: 'creator' }
+              ]
+            },
+            hobbies: {
+              title: '日常能量来源 · 探索篇',
+              subtitle: '🦊 萌系小狐狸 · 生活切片',
+              text: '工作与代码之外，小狐狸守护着我的好奇心。我喜欢收集各种有设计感的独立游戏 UI、拼搭积木与粘土手办，也喜欢在周末背上相机去城市角落捕捉光影。切换到「暖阳针织 · 生活家」穿搭，解锁我的私藏歌单与摄影集！',
+              tags: ['🎮 独立游戏爱好者', '🧸 潮玩与手办', '☕ 手冲咖啡'],
+              links: [
+                { label: '切换至「生活家」查看兴趣日常 →', actionPersona: 'lifestyle' }
+              ]
+            },
+            contact: {
+              title: '与我建立连接 · 信号发射站',
+              subtitle: '🎧 悬浮星音盒 · 联系方式',
+              text: '很高兴在这个小小的星轨宇宙里遇见你！无论是想聊聊有趣的 3D 网页创意、开源项目合作，还是单纯交个朋友，都欢迎随时向这颗星球发送信号。',
+              tags: ['📮 邮箱秒回', '🐙 GitHub 活跃', '💬 欢迎交流'],
+              links: [
+                { label: '📋 复制联系邮箱 (hello@example.com)', copyText: 'hello@example.com' }
+              ]
+            }
+          }
+        },
+        creator: {
+          id: 'creator',
+          name: '创造者 · 工作态',
+          emoji: '💻',
+          badgeClass: 'bg-indigo-100/90 text-indigo-700',
+          accentHex: '#6366f1',
+          orbitColor: 0x6366f1,
+          bgInner: '#f1f4fc',
+          bgOuter: '#dce2f4',
+          desc: '极客卫衣 + 眼镜耳机 + 全息电脑 · 当前展示技术栈与工程项目视角',
+          outfit: {
+            topColor: 0x3b4262,
+            collarColor: 0x6366f1,
+            skirtColor: 0x222638,
+            shoeColor: 0x6366f1,
+            hairColor: 0x9aaec4,
+            starClip: false,
+            glasses: true,
+            beret: false,
+            headphones: true,
+            propType: 'laptop'
+          },
+          modules: {
+            about: {
+              title: '关于我 · 全栈与创意前端工程师',
+              subtitle: '🪐 环绕星球 · 专业技能画像',
+              text: '穿上极客卫衣、戴上眼镜与降噪耳机，正式进入「创造者模式」！我专注于现代前端架构（React / Vue / TypeScript）与 Web 3D 交互体验（Three.js / WebGL / 着色器动画），擅长将复杂的业务逻辑与高颜值的微交互、声音反馈融为一体。',
+              tags: ['⚡ TypeScript / React', '🧊 Three.js / WebGL', '🎵 Web Audio 交互音效', '🚀 高性能动画优化'],
+              links: []
+            },
+            projects: {
+              title: '核心开源项目与技术实战',
+              subtitle: '✈️ 折纸飞机 · 工程作品集',
+              text: '1. 【3D 星轨换装个人展台】：基于 Three.js + Tone.js 构建的零后端游戏化个人主页，支持身份联动换装、3D 声波涟漪与 TTS 语音解说。\n2. 【跨端可视化组件库】：封装高帧率毛玻璃 UI 与微交互声效引擎，让网页拥有媲美主机游戏的操作手感。',
+              tags: ['🌟 GitHub Pages 零成本部署', '📦 模块化架构', '🎨 60FPS 丝滑渲染'],
+              links: [
+                { label: '⚙️ 打开右上角面板修改我的项目文案', openDrawer: true }
+              ]
+            },
+            hobbies: {
+              title: '极客玩具与创造力充电',
+              subtitle: '🦊 萌系小狐狸 · 创造者日常',
+              text: '在创造者状态下，我的业余爱好也带着一点极客属性：喜欢研究开源 AI 工具链、给自己的客制化机械键盘调校轴体声音、用 Blender 捏低多边形小物件，以及参加 48 小时 Game Jam 独立游戏开发挑战。',
+              tags: ['⌨️ 客制化键盘', '🎲 Game Jam 开发者', '🤖 Creative Coding'],
+              links: []
+            },
+            contact: {
+              title: '技术交流与项目合作',
+              subtitle: '🎧 悬浮星音盒 · 开发者通道',
+              text: '正在寻找对交互品质有极致追求的前端/创意开发伙伴？或者想一起折腾开源项目？点击下方按钮可直接复制我的开发者邮箱。',
+              tags: ['💼 开放远程/全职机会', '🛠️ 技术顾问与开源共创'],
+              links: [
+                { label: '📋 复制开发者邮箱 (dev@example.com)', copyText: 'dev@example.com' }
+              ]
+            }
+          }
+        },
+        lifestyle: {
+          id: 'lifestyle',
+          name: '生活家 · 兴趣态',
+          emoji: '🦊',
+          badgeClass: 'bg-amber-100/90 text-amber-800',
+          accentHex: '#f59e0b',
+          orbitColor: 0xf59e0b,
+          bgInner: '#fbf7f2',
+          bgOuter: '#efe6dc',
+          desc: '暖阳针织衫 + 画家贝雷帽 + 复古相机 · 当前展示生活美学与兴趣爱好视角',
+          outfit: {
+            topColor: 0xf3d5b5,
+            collarColor: 0xd97706,
+            skirtColor: 0x6b4f3b,
+            shoeColor: 0x8c5a3c,
+            hairColor: 0xa67c68,
+            starClip: true,
+            glasses: false,
+            beret: true,
+            headphones: false,
+            propType: 'camera'
+          },
+          modules: {
+            about: {
+              title: '关于我 · 热爱生活的观察者',
+              subtitle: '🪐 环绕星球 · 生活家自白',
+              text: '换上温暖的针织衫、戴上画家贝雷帽与挂脖相机，这里是我的「生活家频道」。我相信好的作品一定生长在丰盈的生活感知之上——去吹傍晚的风、去听雨声落在屋檐、去记录路边小动物打哈欠的瞬间。',
+              tags: ['📷 街拍与胶片摄影', '🎹 治愈系纯音乐', '🐱 猫狗双全梦想家', '🏕️ 城市漫步 Citywalk'],
+              links: []
+            },
+            projects: {
+              title: '生活创作集 · 影像与手账',
+              subtitle: '✈️ 折纸飞机 · 灵感副业',
+              text: '除了写代码，这架纸飞机还承载着我的生活创作：整理了超过 300 张城市黄昏胶片影集、维护着一份陪伴无数人专注工作的「Lo-Fi & 钢琴治愈歌单」，还在持续绘制一套 Q 版小动物表情包。',
+              tags: ['🎞️ 胶片摄影专栏', '🎵 治愈系歌单主理', '🖌️ 插画与手账'],
+              links: []
+            },
+            hobbies: {
+              title: '我的精神角落 · 狐狸森林',
+              subtitle: '🦊 萌系小狐狸 · 最爱清单',
+              text: '最喜欢的动画是充满温暖想象力的奇幻公路片；最喜欢的游戏是能让人静下心来装修小岛、给角色搭配每日穿搭的休闲模拟经营；周末最大的幸福就是烤一盘热乎乎的肉桂卷配手冲咖啡。',
+              tags: ['🥐 烘焙与料理', '🏝️ 模拟经营游戏', '📚 奇幻文学与绘本'],
+              links: []
+            },
+            contact: {
+              title: '来我的生活频道串门吧',
+              subtitle: '🎧 悬浮星音盒 · 朋友留言板',
+              text: '如果你也喜欢温暖治愈的画风、喜欢拍照或者听纯音乐，欢迎随时写信给我分享你最近遇到的小确幸！',
+              tags: ['💌 欢迎交换明信片', '🎵 欢迎安利宝藏歌单'],
+              links: [
+                { label: '📋 复制交友邮箱 (life@example.com)', copyText: 'life@example.com' }
+              ]
+            }
+          }
+        }
+      }
+    };
+
+    const HAIR_PALETTES = [0xb9aea8, 0x9aaec4, 0xa67c68, 0xf2b5c8, 0x4a4e69];
+    let currentHairIndex = 0;
+
+    // Load saved profile edits from localStorage safely
+    try {
+      const savedName = localStorage.getItem('avatar_portfolio_name');
+      if (savedName) PROFILE_CONFIG.name = savedName;
+    } catch (e) {}
+
+    // =========================================================================
+    // 2. THREE-LAYER AUDIO ENGINE (BGM + Crisp Piano/Sine UI SFX + Voice/TTS)
+    // =========================================================================
+    const AudioEngine = {
+      initialized: false,
+      bgmPlaying: false,
+      sfxEnabled: true,
+      bgmLoop: null,
+      bgmSynth: null,
+      uiSynth: null,
+      currentPersona: 'explorer',
+      customAudioEl: null,
+      isSpeaking: false,
+
+      async init() {
+        if (this.initialized) return;
+        try {
+          await Tone.start();
+          // Soft celesta / electric piano synth for BGM (matches reference video gentle piano vibe)
+          const reverb = new Tone.Reverb({ decay: 3.2, wet: 0.45 }).toDestination();
+          this.bgmSynth = new Tone.PolySynth(Tone.Synth, {
+            oscillator: { type: 'sine' },
+            envelope: { attack: 0.03, decay: 1.1, sustain: 0.15, release: 1.8 },
+            volume: -14
+          }).connect(reverb);
+
+          // Crisp UI sound effect synth (inspired by snd-lib SND01 sine / SND02 piano kit)
+          this.uiSynth = new Tone.PolySynth(Tone.Synth, {
+            oscillator: { type: 'triangle' },
+            envelope: { attack: 0.005, decay: 0.22, sustain: 0.0, release: 0.25 },
+            volume: -10
+          }).toDestination();
+
+          // Generative soothing arpeggio progression per persona
+          const chordsByPersona = {
+            explorer: ['C5', 'E5', 'G5', 'B5', 'A4', 'C5', 'E5', 'G5', 'F4', 'A4', 'C5', 'E5', 'G4', 'B4', 'D5', 'G5'],
+            creator:  ['D5', 'F5', 'A5', 'C6', 'A4', 'C5', 'E5', 'G5', 'C5', 'E5', 'G5', 'B5', 'G4', 'A4', 'D5', 'F5'],
+            lifestyle:['F4', 'A4', 'C5', 'E5', 'G4', 'B4', 'D5', 'G5', 'E4', 'G4', 'B4', 'D5', 'A4', 'C5', 'E5', 'A5']
+          };
+          let step = 0;
+          this.bgmLoop = new Tone.Loop((time) => {
+            if (!this.bgmPlaying) return;
+            const notes = chordsByPersona[this.currentPersona] || chordsByPersona.explorer;
+            const note = notes[step % notes.length];
+            this.bgmSynth.triggerAttackRelease(note, '8n', time);
+            step++;
+          }, '4n');
+
+          Tone.Transport.bpm.value = 88;
+          Tone.Transport.start();
+          this.bgmLoop.start(0);
+          this.initialized = true;
+        } catch (err) {
+          console.warn('Web Audio init deferred:', err);
+        }
+      },
+
+      async toggleBGM(forceState) {
+        await this.init();
+        this.bgmPlaying = typeof forceState === 'boolean' ? forceState : !this.bgmPlaying;
+        const iconEl = document.getElementById('bgm-icon');
+        const labelEl = document.getElementById('bgm-label');
+        if (this.bgmPlaying) {
+          iconEl.textContent = '🎶';
+          labelEl.textContent = '治愈 BGM: 开';
+        } else {
+          iconEl.textContent = '🔇';
+          labelEl.textContent = '治愈 BGM: 关';
+        }
+      },
+
+      toggleSFX() {
+        this.sfxEnabled = !this.sfxEnabled;
+        document.getElementById('sfx-icon').textContent = this.sfxEnabled ? '🔔' : '🔕';
+        document.getElementById('sfx-label').textContent = this.sfxEnabled ? 'UI 音效: 开' : 'UI 音效: 关';
+        if (this.sfxEnabled) this.playSFX('tap');
+      },
+
+      async playSFX(type) {
+        if (!this.sfxEnabled) return;
+        await this.init();
+        if (!this.uiSynth) return;
+        const now = Tone.now();
+        if (type === 'hover') {
+          this.uiSynth.triggerAttackRelease('G5', '32n', now, 0.25);
+        } else if (type === 'tap') {
+          this.uiSynth.triggerAttackRelease('C6', '32n', now, 0.5);
+        } else if (type === 'ripple') {
+          // Water-drop harmonic ripple sound matching video 00:05 click feedback
+          this.uiSynth.triggerAttackRelease(['E5', 'B5'], '16n', now, 0.65);
+          this.uiSynth.triggerAttackRelease('E6', '16n', now + 0.09, 0.55);
+          this.uiSynth.triggerAttackRelease('G6', '16n', now + 0.18, 0.45);
+        } else if (type === 'dressup') {
+          // Sparkling outfit change chime
+          this.uiSynth.triggerAttackRelease('C5', '16n', now, 0.6);
+          this.uiSynth.triggerAttackRelease('E5', '16n', now + 0.07, 0.65);
+          this.uiSynth.triggerAttackRelease('G5', '16n', now + 0.14, 0.7);
+          this.uiSynth.triggerAttackRelease('C6', '8n', now + 0.21, 0.8);
+        } else if (type === 'close') {
+          this.uiSynth.triggerAttackRelease('A5', '32n', now, 0.45);
+          this.uiSynth.triggerAttackRelease('E5', '32n', now + 0.06, 0.35);
+        }
+      },
+
+      stopVoice() {
+        if (this.customAudioEl) {
+          this.customAudioEl.pause();
+          this.customAudioEl.currentTime = 0;
+        }
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+        }
+        this.setSpeakingUI(false);
+      },
+
+      setSpeakingUI(speaking) {
+        this.isSpeaking = speaking;
+        const dot = document.getElementById('voice-status-dot');
+        const txt = document.getElementById('voice-status-text');
+        const btn = document.getElementById('btn-play-voice');
+        if (speaking) {
+          dot.className = 'w-2 h-2 rounded-full bg-sky-500 animate-ping';
+          txt.textContent = PROFILE_CONFIG.customVoiceBlobUrl ? '正在播放你的真人语音介绍...' : '正在为你语音朗读卡片介绍...';
+          btn.classList.add('ring-2', 'ring-sky-400', 'bg-sky-50');
+        } else {
+          dot.className = 'w-2 h-2 rounded-full bg-slate-300';
+          txt.textContent = '点击右侧喇叭收听语音介绍';
+          btn.classList.remove('ring-2', 'ring-sky-400', 'bg-sky-50');
+        }
+      },
+
+      playVoiceIntro(textToRead) {
+        this.playSFX('tap');
+        if (this.isSpeaking) {
+          this.stopVoice();
+          return;
+        }
+        // Priority 1: User uploaded custom MP3/WAV voice recording
+        if (PROFILE_CONFIG.customVoiceBlobUrl) {
+          this.customAudioEl = new Audio(PROFILE_CONFIG.customVoiceBlobUrl);
+          this.setSpeakingUI(true);
+          this.customAudioEl.onended = () => this.setSpeakingUI(false);
+          this.customAudioEl.onerror = () => this.setSpeakingUI(false);
+          this.customAudioEl.play().catch(() => this.setSpeakingUI(false));
+          return;
+        }
+        // Priority 2: Browser Native SpeechSynthesis (Chinese TTS)
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          const utter = new SpeechSynthesisUtterance(textToRead);
+          utter.lang = 'zh-CN';
+          utter.rate = 1.02;
+          utter.pitch = 1.08;
+          utter.onstart = () => this.setSpeakingUI(true);
+          utter.onend = () => this.setSpeakingUI(false);
+          utter.onerror = () => this.setSpeakingUI(false);
+          this.setSpeakingUI(true);
+          window.speechSynthesis.speak(utter);
+        } else {
+          showToast('当前浏览器环境暂不支持语音合成，可在右上角上传真人录音文件');
+        }
+      }
+    };
+
+    // =========================================================================
+    // 3. THREE.JS 3D SCENE, CHIBI CHARACTER, ORBITS & RIPPLE EFFECTS
+    // =========================================================================
+    let scene, camera, renderer, raycaster, mouse;
+    let characterRoot, characterPivot, headGroup, leftEyeMesh, rightEyeMesh;
+    let outfitMeshes = {};
+    let externalModelGroup = null;
+    let orbitingItems = [];
+    let orbitRings = [];
+    let rippleRings = [];
+    let dressupParticles = [];
+    let activeOrbitTarget = null;
+    let hoveredOrbitItem = null;
+
+    // Drag-to-rotate state for the centerpiece character
+    let isDraggingCharacter = false;
+    let dragStartX = 0;
+    let targetRotationY = 0.15;
+    let currentRotationY = 0.15;
+    let characterJumpOffset = 0;
+    let characterJumpVelocity = 0;
+
+    function init3DScene() {
+      const container = document.getElementById('canvas-container');
+      const width = container.clientWidth || window.innerWidth;
+      const height = container.clientHeight || window.innerHeight;
+
+      scene = new THREE.Scene();
+
+      // Perspective camera matching the slightly top-down studio product angle in the video
+      camera = new THREE.PerspectiveCamera(36, width / height, 0.1, 100);
+      camera.position.set(0, 4.3, 8.8);
+      camera.lookAt(0, 0.65, 0);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(renderer.domElement);
+
+      raycaster = new THREE.Raycaster();
+      mouse = new THREE.Vector2();
+
+      // Studio Soft Lighting
+      const hemiLight = new THREE.HemisphereLight(0xffffff, 0xd8dee9, 0.92);
+      hemiLight.position.set(0, 10, 0);
+      scene.add(hemiLight);
+
+      const dirLight = new THREE.DirectionalLight(0xfffcf7, 0.72);
+      dirLight.position.set(4.5, 8.5, 6.0);
+      dirLight.castShadow = true;
+      dirLight.shadow.mapSize.width = 1024;
+      dirLight.shadow.mapSize.height = 1024;
+      dirLight.shadow.camera.near = 1;
+      dirLight.shadow.camera.far = 22;
+      const d = 4.5;
+      dirLight.shadow.camera.left = -d;
+      dirLight.shadow.camera.right = d;
+      dirLight.shadow.camera.top = d;
+      dirLight.shadow.camera.bottom = -d;
+      dirLight.shadow.bias = -0.0005;
+      scene.add(dirLight);
+
+      const rimLight = new THREE.DirectionalLight(0xdbeafe, 0.45);
+      rimLight.position.set(-5, 4, -4);
+      scene.add(rimLight);
+
+      // Shadow receiver floor plane
+      const shadowPlane = new THREE.Mesh(
+        new THREE.PlaneGeometry(30, 30),
+        new THREE.ShadowMaterial({ opacity: 0.09 })
+      );
+      shadowPlane.rotation.x = -Math.PI / 2;
+      shadowPlane.position.y = -0.22;
+      shadowPlane.receiveShadow = true;
+      scene.add(shadowPlane);
+
+      buildPedestalAndOrbits();
+      buildChibiCharacter();
+      buildOrbitingObjects();
+      buildRipplePool();
+
+      // Pointer & Touch Events
+      const domEl = renderer.domElement;
+      domEl.addEventListener('pointerdown', onPointerDown);
+      window.addEventListener('pointermove', onPointerMove);
+      window.addEventListener('pointerup', onPointerUp);
+      window.addEventListener('resize', onWindowResize);
+    }
+
+    // -------------------------------------------------------------------------
+    // Build Two-Tier White Pedestal & Concentric Glowing Orbital Rings
+    // -------------------------------------------------------------------------
+    function buildPedestalAndOrbits() {
+      const pedestalGroup = new THREE.Group();
+
+      const whiteStudioMat = new THREE.MeshStandardMaterial({
+        color: 0xf7f8fa,
+        roughness: 0.35,
+        metalness: 0.05
+      });
+
+      // Lower tier cylinder
+      const baseBottom = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.42, 1.48, 0.16, 64),
+        whiteStudioMat
+      );
+      baseBottom.position.y = -0.12;
+      baseBottom.receiveShadow = true;
+      baseBottom.castShadow = true;
+      pedestalGroup.add(baseBottom);
+
+      // Glowing light seam between tiers
+      const seamMat = new THREE.MeshBasicMaterial({
+        color: 0x7cc0ff,
+        transparent: true,
+        opacity: 0.65
+      });
+      const seamRing = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.36, 1.36, 0.035, 64),
+        seamMat
+      );
+      seamRing.position.y = -0.02;
+      outfitMeshes.pedestalSeam = seamRing;
+      pedestalGroup.add(seamRing);
+
+      // Upper tier cylinder
+      const baseTop = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.32, 1.35, 0.14, 64),
+        whiteStudioMat
+      );
+      baseTop.position.y = 0.06;
+      baseTop.receiveShadow = true;
+      baseTop.castShadow = true;
+      pedestalGroup.add(baseTop);
+
+      // Subtle inner ring groove on top of pedestal
+      const topGroove = new THREE.Mesh(
+        new THREE.RingGeometry(1.12, 1.15, 64),
+        new THREE.MeshBasicMaterial({ color: 0xdce3ef, side: THREE.DoubleSide })
+      );
+      topGroove.rotation.x = -Math.PI / 2;
+      topGroove.position.y = 0.132;
+      pedestalGroup.add(topGroove);
+
+      scene.add(pedestalGroup);
+
+      // Three Concentric Glowing Orbital Rings (matching reference video)
+      const radii = [2.05, 2.68, 3.32];
+      radii.forEach((radius, idx) => {
+        const ringGeo = new THREE.RingGeometry(radius - 0.014, radius + 0.014, 128);
+        const ringMat = new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: idx === 1 ? 0.78 : 0.52
+        });
+        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+        ringMesh.rotation.x = -Math.PI / 2;
+        ringMesh.position.y = -0.08 + idx * 0.01;
+        scene.add(ringMesh);
+        orbitRings.push(ringMesh);
+
+        // Small decorative white orbital beads along tracks (like in the video)
+        const beadMesh = new THREE.Mesh(
+          new THREE.SphereGeometry(0.055, 16, 16),
+          new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.3 })
+        );
+        beadMesh.userData = { radius, angle: idx * 2.1 + 0.8, speed: 0.18 + idx * 0.04 };
+        scene.add(beadMesh);
+        orbitRings.push(beadMesh);
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Build Pop-Mart / Clay Style Chibi 3D Character with Dress-Up Parts
+    // -------------------------------------------------------------------------
+    function buildChibiCharacter() {
+      characterPivot = new THREE.Group();
+      characterPivot.position.set(0, 0.13, 0);
+      scene.add(characterPivot);
+
+      characterRoot = new THREE.Group();
+      characterPivot.add(characterRoot);
+
+      const skinMat = new THREE.MeshStandardMaterial({ color: 0xffefe5, roughness: 0.42, metalness: 0.02 });
+      const hairMat = new THREE.MeshStandardMaterial({ color: 0xb9aea8, roughness: 0.46, metalness: 0.04 });
+      const topMat = new THREE.MeshStandardMaterial({ color: 0xf7f9fc, roughness: 0.45 });
+      const collarMat = new THREE.MeshStandardMaterial({ color: 0x3b5998, roughness: 0.45 });
+      const skirtMat = new THREE.MeshStandardMaterial({ color: 0x344966, roughness: 0.5 });
+      const shoeMat = new THREE.MeshStandardMaterial({ color: 0x4a5568, roughness: 0.4 });
+
+      outfitMeshes.hairMat = hairMat;
+      outfitMeshes.topMat = topMat;
+      outfitMeshes.collarMat = collarMat;
+      outfitMeshes.skirtMat = skirtMat;
+      outfitMeshes.shoeMat = shoeMat;
+
+      // 1. Legs & Cute Rounded Shoes
+      [-0.2, 0.2].forEach((xPos) => {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.085, 0.42, 24), skinMat);
+        leg.position.set(xPos, 0.28, 0);
+        leg.castShadow = true;
+        characterRoot.add(leg);
+
+        const sock = new THREE.Mesh(new THREE.CylinderGeometry(0.098, 0.092, 0.16, 24), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+        sock.position.set(xPos, 0.16, 0);
+        characterRoot.add(sock);
+
+        const shoe = new THREE.Mesh(new THREE.SphereGeometry(0.125, 24, 24), shoeMat);
+        shoe.scale.set(1.0, 0.68, 1.35);
+        shoe.position.set(xPos, 0.06, 0.04);
+        shoe.castShadow = true;
+        characterRoot.add(shoe);
+      });
+
+      // 2. Pleated Skirt / Shorts
+      const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.42, 0.34, 32), skirtMat);
+      skirt.position.set(0, 0.56, 0);
+      skirt.castShadow = true;
+      characterRoot.add(skirt);
+
+      // 3. Torso / Sailor Top / Hoodie
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.33, 0.54, 32), topMat);
+      torso.position.set(0, 0.88, 0);
+      torso.castShadow = true;
+      characterRoot.add(torso);
+
+      // Sailor Collar & Ribbon Tie ( matching the chibi character in the video! )
+      const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.275, 0.295, 0.16, 32), collarMat);
+      collar.position.set(0, 1.05, 0);
+      characterRoot.add(collar);
+
+      const tieBow = new THREE.Mesh(new THREE.OctahedronGeometry(0.09, 1), collarMat);
+      tieBow.scale.set(1.2, 1.4, 0.5);
+      tieBow.position.set(0, 0.94, 0.28);
+      characterRoot.add(tieBow);
+
+      // 4. Cute Arms
+      [-0.36, 0.36].forEach((xPos, idx) => {
+        const armGroup = new THREE.Group();
+        armGroup.position.set(xPos, 1.04, 0);
+        armGroup.rotation.z = idx === 0 ? 0.32 : -0.32;
+
+        const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.11, 0.36, 20), topMat);
+        sleeve.position.y = -0.16;
+        sleeve.castShadow = true;
+        armGroup.add(sleeve);
+
+        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.085, 20, 20), skinMat);
+        hand.position.y = -0.37;
+        armGroup.add(hand);
+
+        characterRoot.add(armGroup);
+      });
+
+      // 5. Big Chibi Head Group
+      headGroup = new THREE.Group();
+      headGroup.position.set(0, 1.62, 0);
+      characterRoot.add(headGroup);
+
+      const faceSphere = new THREE.Mesh(new THREE.SphereGeometry(0.56, 48, 48), skinMat);
+      faceSphere.scale.set(1.06, 0.98, 0.96);
+      faceSphere.castShadow = true;
+      headGroup.add(faceSphere);
+
+      // Soft Pink Blush Cheeks
+      const blushMat = new THREE.MeshBasicMaterial({ color: 0xff9ebb, transparent: true, opacity: 0.48 });
+      [-0.31, 0.31].forEach((xPos) => {
+        const blush = new THREE.Mesh(new THREE.CircleGeometry(0.085, 24), blushMat);
+        blush.position.set(xPos, -0.09, 0.51);
+        blush.rotation.y = xPos < 0 ? -0.35 : 0.35;
+        headGroup.add(blush);
+      });
+
+      // Big Expressive Anime Eyes with Specular Catchlights
+      const eyeOuterMat = new THREE.MeshBasicMaterial({ color: 0x3b2820 });
+      const irisMat = new THREE.MeshBasicMaterial({ color: 0x7c5844 });
+      const highlightMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+      [-0.21, 0.21].forEach((xPos, idx) => {
+        const eyeGroup = new THREE.Group();
+        eyeGroup.position.set(xPos, -0.01, 0.505);
+        eyeGroup.rotation.y = xPos < 0 ? -0.22 : 0.22;
+
+        const outer = new THREE.Mesh(new THREE.CircleGeometry(0.095, 28), eyeOuterMat);
+        eyeGroup.add(outer);
+
+        const iris = new THREE.Mesh(new THREE.CircleGeometry(0.068, 28), irisMat);
+        iris.position.set(0, -0.01, 0.002);
+        eyeGroup.add(iris);
+
+        const catchlightBig = new THREE.Mesh(new THREE.CircleGeometry(0.028, 16), highlightMat);
+        catchlightBig.position.set(0.028, 0.032, 0.005);
+        eyeGroup.add(catchlightBig);
+
+        const catchlightSmall = new THREE.Mesh(new THREE.CircleGeometry(0.014, 16), highlightMat);
+        catchlightSmall.position.set(-0.025, -0.028, 0.005);
+        eyeGroup.add(catchlightSmall);
+
+        headGroup.add(eyeGroup);
+        if (idx === 0) leftEyeMesh = eyeGroup;
+        else rightEyeMesh = eyeGroup;
+      });
+
+      // Cute Tiny Smile
+      const smileCurve = new THREE.Mesh(
+        new THREE.TorusGeometry(0.042, 0.009, 12, 24, Math.PI),
+        new THREE.MeshBasicMaterial({ color: 0xc97a63 })
+      );
+      smileCurve.rotation.x = Math.PI;
+      smileCurve.position.set(0, -0.14, 0.535);
+      headGroup.add(smileCurve);
+
+      // 6. Layered Bob Hair + Bangs + Cute Ahoge (呆毛)
+      const hairCap = new THREE.Mesh(
+        new THREE.SphereGeometry(0.60, 48, 48, 0, Math.PI * 2, 0, Math.PI * 0.62),
+        hairMat
+      );
+      hairCap.scale.set(1.08, 1.02, 1.04);
+      hairCap.position.set(0, 0.04, -0.02);
+      hairCap.rotation.x = -0.18;
+      hairCap.castShadow = true;
+      headGroup.add(hairCap);
+
+      // Front Bangs (刘海)
+      [-0.26, -0.09, 0.09, 0.26].forEach((xPos, i) => {
+        const bang = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.36, 16), hairMat);
+        bang.scale.set(1.1, 1.0, 0.45);
+        bang.position.set(xPos, 0.28, 0.47 - Math.abs(xPos) * 0.22);
+        bang.rotation.z = xPos * -0.35;
+        bang.rotation.x = 0.28;
+        headGroup.add(bang);
+      });
+
+      // Side Hair Locks
+      [-0.54, 0.54].forEach((xPos) => {
+        const sideLock = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.06, 0.62, 20), hairMat);
+        sideLock.scale.set(0.7, 1.0, 1.1);
+        sideLock.position.set(xPos, -0.08, 0.12);
+        sideLock.rotation.z = xPos < 0 ? 0.15 : -0.15;
+        sideLock.castShadow = true;
+        headGroup.add(sideLock);
+      });
+
+      // Top Ahoge (呆毛)
+      const ahoge = new THREE.Mesh(
+        new THREE.TorusGeometry(0.14, 0.028, 12, 24, Math.PI * 1.15),
+        hairMat
+      );
+      ahoge.position.set(0.05, 0.62, 0.05);
+      ahoge.rotation.z = 0.6;
+      headGroup.add(ahoge);
+
+      // -----------------------------------------------------------------------
+      // 7. Dress-Up Accessories (Star Hairclip, Geek Glasses, Artist Beret, Headphones, Handheld Props)
+      // -----------------------------------------------------------------------
+      // A. Golden Star Hairclip (星星发夹 - matches video!)
+      const starClip = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.085, 0),
+        new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.25, metalness: 0.4 })
+      );
+      starClip.scale.set(1.2, 1.2, 0.4);
+      starClip.position.set(-0.44, 0.18, 0.42);
+      starClip.rotation.y = -0.5;
+      headGroup.add(starClip);
+      outfitMeshes.starClip = starClip;
+
+      // B. Geek Glasses (极客黑框眼镜)
+      const glassesGroup = new THREE.Group();
+      const frameMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.2, metalness: 0.5 });
+      [-0.21, 0.21].forEach((xPos) => {
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(0.125, 0.016, 12, 32), frameMat);
+        rim.position.set(xPos, -0.01, 0.545);
+        rim.rotation.y = xPos < 0 ? -0.18 : 0.18;
+        glassesGroup.add(rim);
+      });
+      const bridge = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.16, 12), frameMat);
+      bridge.rotation.z = Math.PI / 2;
+      bridge.position.set(0, 0.01, 0.56);
+      glassesGroup.add(bridge);
+      glassesGroup.visible = false;
+      headGroup.add(glassesGroup);
+      outfitMeshes.glasses = glassesGroup;
+
+      // C. Artist Beret (焦糖画家贝雷帽)
+      const beretGroup = new THREE.Group();
+      const beretMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.6 });
+      const beretDome = new THREE.Mesh(new THREE.SphereGeometry(0.52, 32, 24), beretMat);
+      beretDome.scale.set(1.15, 0.36, 1.12);
+      beretDome.position.set(-0.08, 0.54, 0.02);
+      beretDome.rotation.z = 0.18;
+      beretGroup.add(beretDome);
+      const beretStem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.09, 12), beretMat);
+      beretStem.position.set(-0.12, 0.68, 0.02);
+      beretGroup.add(beretStem);
+      beretGroup.visible = false;
+      headGroup.add(beretGroup);
+      outfitMeshes.beret = beretGroup;
+
+      // D. Studio Wireless Headphones (头戴式耳机)
+      const hpGroup = new THREE.Group();
+      const hpBandMat = new THREE.MeshStandardMaterial({ color: 0x6366f1, roughness: 0.3, metalness: 0.3 });
+      const hpCupMat = new THREE.MeshStandardMaterial({ color: 0xe0e7ff, roughness: 0.25 });
+      const headband = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.038, 16, 48, Math.PI), hpBandMat);
+      headband.position.set(0, 0.02, 0.02);
+      hpGroup.add(headband);
+      [-0.61, 0.61].forEach((xPos) => {
+        const earCup = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.11, 24), hpCupMat);
+        earCup.rotation.z = Math.PI / 2;
+        earCup.position.set(xPos, -0.02, 0.05);
+        hpGroup.add(earCup);
+      });
+      hpGroup.visible = false;
+      headGroup.add(hpGroup);
+      outfitMeshes.headphones = hpGroup;
+
+      // E. Floating Mini Holographic Laptop Prop (Creator Mode)
+      const laptopGroup = new THREE.Group();
+      const silverMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.25, metalness: 0.6 });
+      const screenGlowMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+      const kbBase = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.025, 0.26), silverMat);
+      laptopGroup.add(kbBase);
+      const lid = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.24, 0.02), silverMat);
+      lid.position.set(0, 0.11, -0.12);
+      lid.rotation.x = -0.25;
+      laptopGroup.add(lid);
+      const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.31, 0.19), screenGlowMat);
+      screen.position.set(0, 0.11, -0.108);
+      screen.rotation.x = -0.25;
+      laptopGroup.add(screen);
+      laptopGroup.position.set(0.62, 0.92, 0.35);
+      laptopGroup.rotation.y = -0.45;
+      laptopGroup.visible = false;
+      characterRoot.add(laptopGroup);
+      outfitMeshes.laptop = laptopGroup;
+
+      // F. Vintage Neck Camera Prop (Lifestyle Mode)
+      const cameraGroup = new THREE.Group();
+      const camBody = new THREE.Mesh(
+        new THREE.BoxGeometry(0.28, 0.19, 0.14),
+        new THREE.MeshStandardMaterial({ color: 0x4b3832, roughness: 0.5 })
+      );
+      cameraGroup.add(camBody);
+      const camLens = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.065, 0.065, 0.09, 24),
+        new THREE.MeshStandardMaterial({ color: 0xd4a373, metalness: 0.5, roughness: 0.3 })
+      );
+      camLens.rotation.x = Math.PI / 2;
+      camLens.position.set(0, 0, 0.09);
+      cameraGroup.add(camLens);
+      cameraGroup.position.set(0, 0.78, 0.34);
+      cameraGroup.visible = false;
+      characterRoot.add(cameraGroup);
+      outfitMeshes.camera = cameraGroup;
+
+      // Invisible hit cylinder for easy character drag detection
+      const hitCylinder = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.85, 0.85, 2.5, 16),
+        new THREE.MeshBasicMaterial({ visible: false })
+      );
+      hitCylinder.position.y = 1.1;
+      hitCylinder.userData = { isCharacter: true };
+      characterPivot.add(hitCylinder);
+    }
+
+    // -------------------------------------------------------------------------
+    // Build the 4 Orbiting 3D Objects (Planet, Paper Airplane, Cute Fox, Headphones)
+    // -------------------------------------------------------------------------
+    function buildOrbitingObjects() {
+      // 1. 🪐 Ringed Planet (关于我 - Inner Orbit)
+      const planetGroup = new THREE.Group();
+      const planetSphere = new THREE.Mesh(
+        new THREE.SphereGeometry(0.26, 32, 32),
+        new THREE.MeshStandardMaterial({ color: 0xe6ccb2, roughness: 0.45 })
+      );
+      planetSphere.castShadow = true;
+      planetGroup.add(planetSphere);
+
+      const saturnRing = new THREE.Mesh(
+        new THREE.RingGeometry(0.34, 0.52, 48),
+        new THREE.MeshStandardMaterial({
+          color: 0xd4a373,
+          side: THREE.DoubleSide,
+          roughness: 0.5,
+          transparent: true,
+          opacity: 0.88
+        })
+      );
+      saturnRing.rotation.x = Math.PI * 0.42;
+      saturnRing.rotation.y = 0.25;
+      planetGroup.add(saturnRing);
+
+      registerOrbitItem(planetGroup, {
+        id: 'about',
+        emoji: '🪐',
+        label: '关于我',
+        radius: 2.05,
+        angle: 2.4,
+        speed: 0.26,
+        baseY: 0.22
+      });
+
+      // 2. ✈️ Origami Paper Airplane (作品与经历 - Middle Orbit, matching video!)
+      const planeGroup = new THREE.Group();
+      const planeMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.28,
+        side: THREE.DoubleSide
+      });
+
+      // Build crisp origami paper airplane geometry
+      const planeGeo = new THREE.BufferGeometry();
+      const vertices = new Float32Array([
+        // Left wing
+        0, 0, 0.34,   -0.28, 0.04, -0.22,   -0.04, 0.02, -0.18,
+        // Right wing
+        0, 0, 0.34,    0.04, 0.02, -0.18,    0.28, 0.04, -0.22,
+        // Center fuselage fold left
+        0, 0, 0.34,   -0.04, 0.02, -0.18,    0, -0.09, -0.20,
+        // Center fuselage fold right
+        0, 0, 0.34,    0, -0.09, -0.20,      0.04, 0.02, -0.18
+      ]);
+      planeGeo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+      planeGeo.computeVertexNormals();
+      const planeMesh = new THREE.Mesh(planeGeo, planeMat);
+      planeMesh.castShadow = true;
+      planeGroup.add(planeMesh);
+
+      registerOrbitItem(planeGroup, {
+        id: 'projects',
+        emoji: '✈️',
+        label: '作品与经历',
+        radius: 2.68,
+        angle: 0.35,
+        speed: 0.34,
+        baseY: 0.30,
+        orientToTangent: true
+      });
+
+      // 3. 🦊 Cute 3D Little Fox (兴趣与日常 - Outer Orbit, matching bottom-right of video!)
+      const foxGroup = new THREE.Group();
+      const foxOrangeMat = new THREE.MeshStandardMaterial({ color: 0xe76f51, roughness: 0.42 });
+      const foxWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
+      const foxDarkMat = new THREE.MeshStandardMaterial({ color: 0x2b2d42, roughness: 0.3 });
+
+      // Fox body
+      const foxBody = new THREE.Mesh(new THREE.SphereGeometry(0.16, 24, 24), foxOrangeMat);
+      foxBody.scale.set(0.85, 0.85, 1.35);
+      foxBody.position.set(0, 0.16, 0);
+      foxBody.castShadow = true;
+      foxGroup.add(foxBody);
+
+      // Fox head
+      const foxHead = new THREE.Mesh(new THREE.SphereGeometry(0.155, 24, 24), foxOrangeMat);
+      foxHead.scale.set(1.08, 0.95, 0.98);
+      foxHead.position.set(0, 0.31, 0.14);
+      foxHead.castShadow = true;
+      foxGroup.add(foxHead);
+
+      // Fox snout
+      const foxSnout = new THREE.Mesh(new THREE.ConeGeometry(0.065, 0.12, 16), foxWhiteMat);
+      foxSnout.rotation.x = Math.PI / 2;
+      foxSnout.position.set(0, 0.28, 0.28);
+      foxGroup.add(foxSnout);
+
+      // Fox ears
+      [-0.09, 0.09].forEach((xPos) => {
+        const ear = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.15, 16), foxOrangeMat);
+        ear.position.set(xPos, 0.45, 0.13);
+        ear.rotation.z = xPos < 0 ? 0.22 : -0.22;
+        foxGroup.add(ear);
+      });
+
+      // Fox eyes
+      [-0.06, 0.06].forEach((xPos) => {
+        const fEye = new THREE.Mesh(new THREE.SphereGeometry(0.022, 12, 12), foxDarkMat);
+        fEye.position.set(xPos, 0.32, 0.27);
+        foxGroup.add(fEye);
+      });
+
+      // Fluffy Fox Tail
+      const foxTail = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.28, 16), foxOrangeMat);
+      foxTail.rotation.x = -Math.PI * 0.38;
+      foxTail.position.set(0, 0.21, -0.24);
+      foxGroup.add(foxTail);
+
+      const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.065, 16, 16), foxWhiteMat);
+      tailTip.position.set(0, 0.26, -0.34);
+      foxGroup.add(tailTip);
+
+      // 4 tiny legs
+      [[-0.07, 0.08], [0.07, 0.08], [-0.07, -0.09], [0.07, -0.09]].forEach(([lx, lz]) => {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.025, 0.14, 12), foxDarkMat);
+        leg.position.set(lx, 0.06, lz);
+        foxGroup.add(leg);
+      });
+
+      registerOrbitItem(foxGroup, {
+        id: 'hobbies',
+        emoji: '🦊',
+        label: '兴趣与日常',
+        radius: 3.32,
+        angle: -0.75,
+        speed: 0.21,
+        baseY: -0.06
+      });
+
+      // 4. 🎧 Floating Music/Mail Capsule (联系与电台 - Outer Orbit)
+      const contactGroup = new THREE.Group();
+      const capsuleBody = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.21, 2),
+        new THREE.MeshStandardMaterial({ color: 0xa5b4fc, roughness: 0.28, metalness: 0.15 })
+      );
+      capsuleBody.scale.set(1.15, 0.85, 0.65);
+      capsuleBody.castShadow = true;
+      contactGroup.add(capsuleBody);
+
+      const miniRing = new THREE.Mesh(
+        new THREE.TorusGeometry(0.28, 0.018, 12, 36),
+        new THREE.MeshBasicMaterial({ color: 0xffffff })
+      );
+      miniRing.rotation.x = 0.8;
+      contactGroup.add(miniRing);
+
+      registerOrbitItem(contactGroup, {
+        id: 'contact',
+        emoji: '🎧',
+        label: '联系与电台',
+        radius: 3.32,
+        angle: 2.35,
+        speed: 0.21,
+        baseY: 0.24
+      });
+    }
+
+    function registerOrbitItem(group, meta) {
+      // Invisible larger sphere collider so clicking moving 3D items is effortless
+      const collider = new THREE.Mesh(
+        new THREE.SphereGeometry(0.48, 16, 16),
+        new THREE.MeshBasicMaterial({ visible: false })
+      );
+      collider.userData = { orbitId: meta.id };
+      group.add(collider);
+
+      group.userData = { ...meta, collider };
+      scene.add(group);
+      orbitingItems.push(group);
+    }
+
+    // -------------------------------------------------------------------------
+    // Build Concentric Blue Soundwave Ripple Rings (Matches Video 00:05)
+    // -------------------------------------------------------------------------
+    function buildRipplePool() {
+      for (let i = 0; i < 4; i++) {
+        const ringGeo = new THREE.RingGeometry(0.18, 0.24, 64);
+        const ringMat = new THREE.MeshBasicMaterial({
+          color: 0x4da6ff,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.0
+        });
+        const mesh = new THREE.Mesh(ringGeo, ringMat);
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.visible = false;
+        scene.add(mesh);
+        rippleRings.push({
+          mesh,
+          active: false,
+          age: 0,
+          delay: i * 0.16
+        });
+      }
+    }
+
+    function trigger3DRippleAt(targetGroup) {
+      activeOrbitTarget = targetGroup;
+      rippleRings.forEach((r, idx) => {
+        r.active = true;
+        r.age = -idx * 0.18;
+        r.mesh.visible = true;
+        r.mesh.position.copy(targetGroup.position);
+        r.mesh.position.y = Math.max(0.02, targetGroup.position.y - 0.08);
+        r.mesh.scale.set(0.2, 0.2, 0.2);
+        r.mesh.material.opacity = 0;
+      });
+
+      // Show floating 3D audio waveform badge above the clicked item
+      const badge = document.getElementById('floating-wave-badge');
+      badge.classList.add('active');
+    }
+
+    // =========================================================================
+    // 4. INTERACTION: RAYCASTING, DRAG-TO-ROTATE & MODAL DISPLAY
+    // =========================================================================
+    let pointerDownPos = { x: 0, y: 0 };
+
+    function onPointerDown(e) {
+      pointerDownPos = { x: e.clientX, y: e.clientY };
+      updateMouseCoords(e);
+
+      // Start character rotation drag
+      isDraggingCharacter = true;
+      dragStartX = e.clientX;
+    }
+
+    function onPointerMove(e) {
+      updateMouseCoords(e);
+
+      if (isDraggingCharacter) {
+        const deltaX = e.clientX - dragStartX;
+        dragStartX = e.clientX;
+        targetRotationY += deltaX * 0.013;
+        return;
+      }
+
+      // Check hover on 3D orbiting objects
+      if (!raycaster || !camera) return;
+      raycaster.setFromCamera(mouse, camera);
+      const colliders = orbitingItems.map((g) => g.userData.collider);
+      const intersects = raycaster.intersectObjects(colliders, false);
+
+      const tooltip = document.getElementById('orbit-hover-tooltip');
+      if (intersects.length > 0) {
+        const hitId = intersects[0].object.userData.orbitId;
+        const itemGroup = orbitingItems.find((g) => g.userData.id === hitId);
+        if (itemGroup) {
+          if (hoveredOrbitItem !== itemGroup) {
+            hoveredOrbitItem = itemGroup;
+            AudioEngine.playSFX('hover');
+          }
+          document.body.style.cursor = 'pointer';
+          const screenPos = toScreenPosition(itemGroup.position);
+          tooltip.style.left = `${screenPos.x}px`;
+          tooltip.style.top = `${screenPos.y}px`;
+          document.getElementById('tooltip-emoji').textContent = itemGroup.userData.emoji;
+          document.getElementById('tooltip-title').textContent = itemGroup.userData.label;
+          tooltip.classList.add('visible');
+          return;
+        }
+      }
+
+      hoveredOrbitItem = null;
+      document.body.style.cursor = 'default';
+      tooltip.classList.remove('visible');
+    }
+
+    function onPointerUp(e) {
+      isDraggingCharacter = false;
+      const moveDist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+      if (moveDist > 6) return; // Was a drag, not a click
+
+      updateMouseCoords(e);
+      raycaster.setFromCamera(mouse, camera);
+      const colliders = orbitingItems.map((g) => g.userData.collider);
+      const intersects = raycaster.intersectObjects(colliders, false);
+
+      if (intersects.length > 0) {
+        const hitId = intersects[0].object.userData.orbitId;
+        selectOrbitModule(hitId);
+      }
+    }
+
+    function updateMouseCoords(e) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    }
+
+    function toScreenPosition(worldVec) {
+      const vec = worldVec.clone();
+      vec.project(camera);
+      const widthHalf = 0.5 * window.innerWidth;
+      const heightHalf = 0.5 * window.innerHeight;
+      return {
+        x: vec.x * widthHalf + widthHalf,
+        y: -(vec.y * heightHalf) + heightHalf
+      };
+    }
+
+    // -------------------------------------------------------------------------
+    // Trigger Orbit Item Selection -> Blue Ripple -> Frosted Glass Info Modal
+    // -------------------------------------------------------------------------
+    let currentModalModuleId = null;
+
+    function selectOrbitModule(moduleId) {
+      const targetGroup = orbitingItems.find((g) => g.userData.id === moduleId);
+      if (!targetGroup) return;
+
+      currentModalModuleId = moduleId;
+      AudioEngine.stopVoice();
+      AudioEngine.playSFX('ripple');
+      trigger3DRippleAt(targetGroup);
+
+      // Update left nav active state
+      document.querySelectorAll('.orbit-quick-btn').forEach((btn) => {
+        if (btn.dataset.orbitId === moduleId) {
+          btn.classList.add('ring-2', 'ring-sky-400', 'bg-white');
+        } else {
+          btn.classList.remove('ring-2', 'ring-sky-400', 'bg-white');
+        }
+      });
+
+      // Populate modal content for current Persona + Module
+      renderModalContent(moduleId);
+
+      // Pop open modal after a short 220ms ripple lead-in (matching video timing)
+      setTimeout(() => {
+        document.getElementById('info-modal-wrapper').classList.add('open');
+      }, 220);
+    }
+
+    function renderModalContent(moduleId) {
+      const persona = PROFILE_CONFIG.personas[AudioEngine.currentPersona];
+      const mod = persona.modules[moduleId];
+      if (!mod) return;
+
+      const targetGroup = orbitingItems.find((g) => g.userData.id === moduleId);
+      document.getElementById('modal-icon').textContent = targetGroup ? targetGroup.userData.emoji : '✨';
+      document.getElementById('modal-title').textContent = mod.title;
+      document.getElementById('modal-subtitle').textContent = mod.subtitle;
+
+      const badge = document.getElementById('modal-persona-badge');
+      badge.textContent = persona.name;
+      badge.className = `text-[10px] font-semibold px-2 py-0.5 rounded-full ${persona.badgeClass}`;
+
+      document.getElementById('modal-text-main').textContent = mod.text;
+
+      // Render tags
+      const tagsContainer = document.getElementById('modal-tags');
+      tagsContainer.innerHTML = '';
+      (mod.tags || []).forEach((tag) => {
+        const span = document.createElement('span');
+        span.className = 'px-2.5 py-1 rounded-lg bg-white/80 border border-white text-xs font-medium text-slate-700 shadow-2xs';
+        span.textContent = tag;
+        tagsContainer.appendChild(span);
+      });
+
+      // Render interactive action links
+      const linksContainer = document.getElementById('modal-links');
+      linksContainer.innerHTML = '';
+      (mod.links || []).forEach((lnk) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-900 text-white text-xs font-medium transition shadow-xs';
+        btn.textContent = lnk.label;
+        btn.addEventListener('click', () => {
+          if (lnk.actionPersona) {
+            switchPersona(lnk.actionPersona);
+          } else if (lnk.copyText) {
+            copyToClipboard(lnk.copyText);
+          } else if (lnk.openDrawer) {
+            toggleConfigDrawer(true);
+          }
+        });
+        linksContainer.appendChild(btn);
+      });
+    }
+
+    function closeInfoModal() {
+      AudioEngine.stopVoice();
+      AudioEngine.playSFX('close');
+      document.getElementById('info-modal-wrapper').classList.remove('open');
+      document.getElementById('floating-wave-badge').classList.remove('active');
+      activeOrbitTarget = null;
+      document.querySelectorAll('.orbit-quick-btn').forEach((btn) => {
+        btn.classList.remove('ring-2', 'ring-sky-400', 'bg-white');
+      });
+    }
+
+    // =========================================================================
+    // 5. IDENTITY-LINKED DRESS-UP SYSTEM ("身份联动模式"换装逻辑)
+    // =========================================================================
+    function switchPersona(personaKey) {
+      const persona = PROFILE_CONFIG.personas[personaKey];
+      if (!persona) return;
+
+      AudioEngine.currentPersona = personaKey;
+      AudioEngine.playSFX('dressup');
+
+      // 1. Update 3D Outfit Colors & Accessories
+      const o = persona.outfit;
+      if (outfitMeshes.topMat) outfitMeshes.topMat.color.setHex(o.topColor);
+      if (outfitMeshes.collarMat) outfitMeshes.collarMat.color.setHex(o.collarColor);
+      if (outfitMeshes.skirtMat) outfitMeshes.skirtMat.color.setHex(o.skirtColor);
+      if (outfitMeshes.shoeMat) outfitMeshes.shoeMat.color.setHex(o.shoeColor);
+      if (outfitMeshes.hairMat) outfitMeshes.hairMat.color.setHex(o.hairColor);
+      if (outfitMeshes.pedestalSeam) outfitMeshes.pedestalSeam.material.color.setHex(persona.orbitColor);
+
+      setAccessoryVisible('starClip', o.starClip);
+      setAccessoryVisible('glasses', o.glasses);
+      setAccessoryVisible('beret', o.beret);
+      setAccessoryVisible('headphones', o.headphones);
+
+      if (outfitMeshes.laptop) outfitMeshes.laptop.visible = (o.propType === 'laptop');
+      if (outfitMeshes.camera) outfitMeshes.camera.visible = (o.propType === 'camera');
+
+      // 2. Character Spin + Happy Hop Animation + Dress-up Sparkle Ring
+      targetRotationY += Math.PI * 2;
+      characterJumpVelocity = 0.085;
+      spawnDressupBurst(persona.orbitColor);
+
+      // 3. Update Background Studio Gradient & Top Status Bar
+      document.documentElement.style.setProperty('--bg-inner', persona.bgInner);
+      document.documentElement.style.setProperty('--bg-outer', persona.bgOuter);
+      document.getElementById('persona-avatar-dot').textContent = persona.emoji;
+      const tagEl = document.getElementById('header-persona-tag');
+      tagEl.textContent = persona.name;
+      tagEl.className = `text-[11px] font-medium px-2 py-0.5 rounded-full transition-colors duration-300 ${persona.badgeClass}`;
+      document.getElementById('header-persona-desc').textContent = persona.desc;
+
+      // 4. Update Bottom Wardrobe Active Button State
+      document.querySelectorAll('.persona-btn').forEach((btn) => {
+        if (btn.dataset.persona === personaKey) {
+          btn.className = 'persona-btn px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 bg-white shadow-sm text-slate-800 ring-1 ring-slate-200';
+        } else {
+          btn.className = 'persona-btn px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 text-slate-600 hover:bg-white/60';
+        }
+      });
+
+      // 5. Sync open modal content if a modal is currently open
+      if (currentModalModuleId && document.getElementById('info-modal-wrapper').classList.contains('open')) {
+        renderModalContent(currentModalModuleId);
+      }
+
+      // 6. Sync drawer textarea to current persona's about text
+      const aboutInput = document.getElementById('input-about-text');
+      if (aboutInput) aboutInput.value = persona.modules.about.text;
+    }
+
+    function setAccessoryVisible(accKey, visible) {
+      if (outfitMeshes[accKey]) {
+        outfitMeshes[accKey].visible = visible;
+      }
+      const btn = document.querySelector(`.acc-toggle-btn[data-acc="${accKey}"]`);
+      if (btn) {
+        if (visible) {
+          btn.className = 'acc-toggle-btn px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100/90 text-amber-800 transition flex items-center gap-1 shadow-2xs';
+        } else {
+          btn.className = 'acc-toggle-btn px-2.5 py-1 rounded-full text-xs font-medium text-slate-600 hover:bg-white/70 transition flex items-center gap-1';
+        }
+      }
+    }
+
+    function spawnDressupBurst(hexColor) {
+      for (let i = 0; i < 14; i++) {
+        const p = new THREE.Mesh(
+          new THREE.OctahedronGeometry(0.055, 0),
+          new THREE.MeshBasicMaterial({ color: hexColor, transparent: true, opacity: 0.95 })
+        );
+        const angle = (i / 14) * Math.PI * 2;
+        p.position.set(Math.cos(angle) * 0.45, 0.9, Math.sin(angle) * 0.45);
+        p.userData = {
+          vx: Math.cos(angle) * 0.035,
+          vy: 0.025 + Math.random() * 0.025,
+          vz: Math.sin(angle) * 0.035,
+          life: 1.0
+        };
+        scene.add(p);
+        dressupParticles.push(p);
+      }
+    }
+
+    // =========================================================================
+    // 6. ANIMATION LOOP (60FPS Smooth Orbiting, Breathing, Blinking & Ripples)
+    // =========================================================================
+    const clock = new THREE.Clock();
+    let blinkTimer = 0;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = Math.min(clock.getDelta(), 0.05);
+      const elapsed = clock.getElapsedTime();
+
+      // 1. Smoothly damp character rotation & hop
+      currentRotationY += (targetRotationY - currentRotationY) * 0.11;
+      if (characterPivot) {
+        characterPivot.rotation.y = currentRotationY;
+
+        if (characterJumpOffset > 0 || characterJumpVelocity !== 0) {
+          characterJumpOffset += characterJumpVelocity;
+          characterJumpVelocity -= 0.0065;
+          if (characterJumpOffset <= 0) {
+            characterJumpOffset = 0;
+            characterJumpVelocity = 0;
+          }
+        }
+        // Subtle idle breathing bounce
+        characterPivot.position.y = 0.13 + Math.sin(elapsed * 2.4) * 0.025 + characterJumpOffset;
+      }
+
+      // Cute automatic eye blinking
+      blinkTimer += delta;
+      if (blinkTimer > 3.6) {
+        const blinkPhase = (blinkTimer - 3.6) / 0.16;
+        if (blinkPhase < 1) {
+          const scaleY = Math.max(0.08, Math.abs(Math.cos(blinkPhase * Math.PI)));
+          if (leftEyeMesh) leftEyeMesh.scale.y = scaleY;
+          if (rightEyeMesh) rightEyeMesh.scale.y = scaleY;
+        } else {
+          if (leftEyeMesh) leftEyeMesh.scale.y = 1;
+          if (rightEyeMesh) rightEyeMesh.scale.y = 1;
+          blinkTimer = 0;
+        }
+      }
+
+      // Floating laptop/camera prop gentle bob
+      if (outfitMeshes.laptop && outfitMeshes.laptop.visible) {
+        outfitMeshes.laptop.position.y = 0.92 + Math.sin(elapsed * 3.2) * 0.04;
+      }
+
+      // 2. Update 4 Orbiting 3D Items along their Concentric Tracks
+      const orbitSpeedMultiplier = hoveredOrbitItem ? 0.25 : 1.0;
+      orbitingItems.forEach((group, idx) => {
+        const meta = group.userData;
+        meta.angle += meta.speed * delta * orbitSpeedMultiplier;
+        const x = Math.cos(meta.angle) * meta.radius;
+        const z = Math.sin(meta.angle) * meta.radius;
+        const bobY = meta.baseY + Math.sin(elapsed * 2.6 + idx * 1.5) * 0.055;
+        group.position.set(x, bobY, z);
+
+        if (meta.orientToTangent) {
+          // Paper airplane faces forward along its orbital path with a gentle bank
+          const tangentAngle = -meta.angle;
+          group.rotation.y = tangentAngle;
+          group.rotation.z = Math.sin(elapsed * 2.2) * 0.12;
+        } else if (meta.id === 'hobbies') {
+          // Cute fox faces slightly outward/forward with gentle hop
+          group.rotation.y = -meta.angle + Math.PI * 0.25;
+        } else {
+          group.rotation.y += delta * 0.65;
+        }
+      });
+
+      // Update small decorative track beads
+      orbitRings.forEach((obj) => {
+        if (obj.userData && obj.userData.radius) {
+          obj.userData.angle += obj.userData.speed * delta;
+          obj.position.set(
+            Math.cos(obj.userData.angle) * obj.userData.radius,
+            -0.07,
+            Math.sin(obj.userData.angle) * obj.userData.radius
+          );
+        }
+      });
+
+      // 3. Update Concentric Blue Soundwave Ripples & Floating Badge Position
+      if (activeOrbitTarget) {
+        const badge = document.getElementById('floating-wave-badge');
+        const screenPos = toScreenPosition(activeOrbitTarget.position);
+        badge.style.left = `${screenPos.x}px`;
+        badge.style.top = `${screenPos.y - 18}px`;
+
+        rippleRings.forEach((r) => {
+          if (!r.active) return;
+          r.age += delta * 0.95;
+          r.mesh.position.x = activeOrbitTarget.position.x;
+          r.mesh.position.z = activeOrbitTarget.position.z;
+          if (r.age < 0) {
+            r.mesh.material.opacity = 0;
+            return;
+          }
+          const progress = r.age % 1.0;
+          const scale = 0.35 + progress * 3.4;
+          r.mesh.scale.set(scale, scale, scale);
+          r.mesh.material.opacity = Math.max(0, (1 - progress) * 0.68);
+        });
+      } else {
+        rippleRings.forEach((r) => {
+          r.active = false;
+          r.mesh.visible = false;
+        });
+      }
+
+      // 4. Update Dress-up Burst Particles
+      for (let i = dressupParticles.length - 1; i >= 0; i--) {
+        const p = dressupParticles[i];
+        p.position.x += p.userData.vx;
+        p.position.y += p.userData.vy;
+        p.position.z += p.userData.vz;
+        p.rotation.x += 0.08;
+        p.rotation.y += 0.08;
+        p.userData.life -= delta * 1.6;
+        p.material.opacity = Math.max(0, p.userData.life);
+        if (p.userData.life <= 0) {
+          scene.remove(p);
+          dressupParticles.splice(i, 1);
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    function onWindowResize() {
+      const container = document.getElementById('canvas-container');
+      const width = container.clientWidth || window.innerWidth;
+      const height = container.clientHeight || window.innerHeight;
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height);
+    }
+
+    // =========================================================================
+    // 7. UI CONTROLS, DRAWER & EXTERNAL ASSET LOADERS
+    // =========================================================================
+    function showToast(msg) {
+      const el = document.getElementById('toast-msg');
+      el.textContent = msg;
+      el.classList.remove('opacity-0');
+      el.classList.add('opacity-100');
+      clearTimeout(el._timer);
+      el._timer = setTimeout(() => {
+        el.classList.remove('opacity-100');
+        el.classList.add('opacity-0');
+      }, 2600);
+    }
+
+    function copyToClipboard(text) {
+      AudioEngine.playSFX('tap');
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast(`已复制: ${text}`);
+      } catch (err) {
+        showToast(`复制内容: ${text}`);
+      }
+      document.body.removeChild(ta);
+    }
+
+    function toggleConfigDrawer(open) {
+      AudioEngine.playSFX('tap');
+      const drawer = document.getElementById('config-drawer');
+      const backdrop = document.getElementById('config-drawer-backdrop');
+      if (open) {
+        backdrop.classList.remove('hidden');
+        setTimeout(() => backdrop.classList.add('opacity-100'), 10);
+        drawer.classList.remove('translate-x-full');
+      } else {
+        backdrop.classList.remove('opacity-100');
+        drawer.classList.add('translate-x-full');
+        setTimeout(() => backdrop.classList.add('hidden'), 300);
+      }
+    }
+
+    function bindUIEvents() {
+      // First click anywhere wakes up soothing BGM automatically if not toggled yet
+      let firstGestureHandled = false;
+      window.addEventListener('pointerdown', () => {
+        if (!firstGestureHandled) {
+          firstGestureHandled = true;
+          AudioEngine.toggleBGM(true);
+        }
+      }, { once: true });
+
+      document.getElementById('btn-bgm-toggle').addEventListener('click', () => {
+        AudioEngine.toggleBGM();
+      });
+
+      document.getElementById('btn-sfx-toggle').addEventListener('click', () => {
+        AudioEngine.toggleSFX();
+      });
+
+      // Toggle between Clean Reading Mode and Video Blur Placeholder Demo Mode
+      let isBlurMode = false;
+      document.getElementById('btn-blur-toggle').addEventListener('click', () => {
+        AudioEngine.playSFX('tap');
+        isBlurMode = !isBlurMode;
+        document.body.classList.toggle('video-blur-mode', isBlurMode);
+        document.getElementById('blur-icon').textContent = isBlurMode ? '🌫️' : '👁️';
+        document.getElementById('blur-label').textContent = isBlurMode ? '视频模糊占位风' : '清晰正文';
+        showToast(isBlurMode ? '已切换为参考视频同款「模糊占位演示风」（鼠标悬停卡片可看清）' : '已切换为「清晰文字阅读模式」');
+      });
+
+      // Modal close & voice readout
+      document.getElementById('btn-close-modal').addEventListener('click', closeInfoModal);
+      document.getElementById('btn-play-voice').addEventListener('click', () => {
+        const text = document.getElementById('modal-text-main').textContent;
+        const title = document.getElementById('modal-title').textContent;
+        AudioEngine.playVoiceIntro(`${title}。${text}`);
+      });
+
+      // Left quick-nav orbit buttons
+      document.querySelectorAll('.orbit-quick-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          selectOrbitModule(btn.dataset.orbitId);
+        });
+      });
+
+      // Mobile cycle orbit button
+      const orbitOrder = ['about', 'projects', 'hobbies', 'contact'];
+      let mobileOrbitIdx = 0;
+      document.getElementById('btn-cycle-orbit').addEventListener('click', () => {
+        selectOrbitModule(orbitOrder[mobileOrbitIdx % orbitOrder.length]);
+        mobileOrbitIdx++;
+      });
+
+      // Persona Wardrobe buttons (Identity-Linked Dress-up)
+      document.querySelectorAll('.persona-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          switchPersona(btn.dataset.persona);
+        });
+      });
+
+      // Individual Accessory DIY Toggles
+      document.querySelectorAll('.acc-toggle-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const accKey = btn.dataset.acc;
+          if (!outfitMeshes[accKey]) return;
+          const nextState = !outfitMeshes[accKey].visible;
+          setAccessoryVisible(accKey, nextState);
+          AudioEngine.playSFX('tap');
+          characterJumpVelocity = 0.055;
+        });
+      });
+
+      // Hair color cycler
+      document.getElementById('btn-hair-color').addEventListener('click', () => {
+        currentHairIndex = (currentHairIndex + 1) % HAIR_PALETTES.length;
+        if (outfitMeshes.hairMat) {
+          outfitMeshes.hairMat.color.setHex(HAIR_PALETTES[currentHairIndex]);
+        }
+        AudioEngine.playSFX('tap');
+        characterJumpVelocity = 0.05;
+      });
+
+      // Drawer open/close
+      document.getElementById('btn-open-drawer').addEventListener('click', () => toggleConfigDrawer(true));
+      document.getElementById('btn-close-drawer').addEventListener('click', () => toggleConfigDrawer(false));
+      document.getElementById('config-drawer-backdrop').addEventListener('click', () => toggleConfigDrawer(false));
+
+      // Custom Voice MP3 Upload
+      document.getElementById('input-voice-file').addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        if (PROFILE_CONFIG.customVoiceBlobUrl) URL.revokeObjectURL(PROFILE_CONFIG.customVoiceBlobUrl);
+        PROFILE_CONFIG.customVoiceBlobUrl = URL.createObjectURL(file);
+        const statusEl = document.getElementById('custom-voice-status');
+        statusEl.textContent = `✅ 已加载真人语音：${file.name}（点击弹窗右下角 🔊 即可播放）`;
+        statusEl.classList.remove('hidden');
+        showToast('真人语音加载成功！打开任意环绕物弹窗点击 🔊 即可试听');
+      });
+
+      document.getElementById('btn-clear-voice').addEventListener('click', () => {
+        PROFILE_CONFIG.customVoiceBlobUrl = null;
+        document.getElementById('custom-voice-status').classList.add('hidden');
+        showToast('已恢复为浏览器智能中文语音朗读 (TTS)');
+      });
+
+      // External .glb / .gltf 3D Model Loader
+      document.getElementById('input-glb-file').addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file || !THREE.GLTFLoader) return;
+        const url = URL.createObjectURL(file);
+        const loader = new THREE.GLTFLoader();
+        showToast('正在加载外部 3D 模型...');
+        loader.load(
+          url,
+          (gltf) => {
+            if (externalModelGroup) characterPivot.remove(externalModelGroup);
+            externalModelGroup = gltf.scene;
+            // Normalize scale & center on pedestal
+            const box = new THREE.Box3().setFromObject(externalModelGroup);
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z) || 1;
+            const scale = 2.0 / maxDim;
+            externalModelGroup.scale.setScalar(scale);
+            const centeredBox = new THREE.Box3().setFromObject(externalModelGroup);
+            externalModelGroup.position.y = -centeredBox.min.y;
+            characterRoot.visible = false;
+            characterPivot.add(externalModelGroup);
+            AudioEngine.playSFX('dressup');
+            showToast(`已成功切换为外部模型：${file.name}`);
+          },
+          undefined,
+          () => showToast('加载 .glb 模型失败，请确认文件格式有效')
+        );
+      });
+
+      document.getElementById('btn-reset-model').addEventListener('click', () => {
+        if (externalModelGroup) {
+          characterPivot.remove(externalModelGroup);
+          externalModelGroup = null;
+        }
+        characterRoot.visible = true;
+        AudioEngine.playSFX('tap');
+        showToast('已恢复为内置粘土风 Q 版小人');
+      });
+
+      // Quick Profile Editor Save
+      const nameInput = document.getElementById('input-profile-name');
+      const aboutInput = document.getElementById('input-about-text');
+      nameInput.value = PROFILE_CONFIG.name;
+      aboutInput.value = PROFILE_CONFIG.personas.explorer.modules.about.text;
+      document.getElementById('header-user-name').textContent = PROFILE_CONFIG.name;
+
+      document.getElementById('btn-save-profile').addEventListener('click', () => {
+        const newName = nameInput.value.trim() || '林星染 · Xingran';
+        const newAbout = aboutInput.value.trim();
+        PROFILE_CONFIG.name = newName;
+        document.getElementById('header-user-name').textContent = newName;
+        if (newAbout) {
+          PROFILE_CONFIG.personas[AudioEngine.currentPersona].modules.about.text = newAbout;
+        }
+        try {
+          localStorage.setItem('avatar_portfolio_name', newName);
+        } catch (err) {}
+        if (currentModalModuleId === 'about') {
+          renderModalContent('about');
+        }
+        toggleConfigDrawer(false);
+        showToast('个人资料修改已实时生效！');
+      });
+    }
+
+    // Start everything on window load
+    window.onload = function () {
+      init3DScene();
+      bindUIEvents();
+      animate();
+    };
+  </script>
+</body>
+</html>
