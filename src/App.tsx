@@ -9,6 +9,7 @@ import {
   BuiltinModelId,
 } from './types';
 import { INITIAL_PROFILE_CONFIG, HAIR_PALETTES } from './data/profileConfig';
+import { MODEL_PRESETS, MODEL_IDS } from './data/modelsConfig';
 import { audioEngine } from './services/audioEngine';
 import { ThreeCanvas } from './components/ThreeCanvas';
 import { Header } from './components/Header';
@@ -35,15 +36,15 @@ export const App: React.FC = () => {
   const [currentPersonaId, setCurrentPersonaId] = useState<PersonaId>('explorer');
   const currentPersona = profileConfig.personas[currentPersonaId];
 
-  // 3D Male Avatar Model Preset (Default to open-source GitHub model: RPG Boy)
-  const [activeModelId] = useState<BuiltinModelId>(() => {
+  // 3D 主角团（5 个手办模型，底部导航坞切换 + localStorage 记忆）
+  const [activeModelId, setActiveModelId] = useState<BuiltinModelId>(() => {
     try {
       const savedModel = localStorage.getItem('avatar_portfolio_model');
-      if (savedModel && (savedModel === 'boy-avatar' || savedModel === 'procedural')) {
+      if (savedModel && (MODEL_IDS as string[]).includes(savedModel)) {
         return savedModel as BuiltinModelId;
       }
     } catch (e) {}
-    return 'boy-avatar';
+    return 'char-classic-capybara';
   });
 
   // Accessory DIY state initialized from current persona outfit
@@ -156,6 +157,19 @@ export const App: React.FC = () => {
   const handleToggleSFX = () => {
     const nextState = audioEngine.toggleSFX();
     setSfxEnabled(nextState);
+  };
+
+  const handleSelectModel = (id: BuiltinModelId) => {
+    if (id === activeModelId) return;
+    audioEngine.playSFX('dressup');
+    setActiveModelId(id);
+    try {
+      localStorage.setItem('avatar_portfolio_model', id);
+    } catch (e) {}
+    const preset = MODEL_PRESETS.find((p) => p.id === id);
+    if (preset) {
+      showToast(`已召唤主角：${preset.name} ${preset.emoji}`);
+    }
   };
 
   const handleSelectPersona = (id: PersonaId) => {
@@ -282,11 +296,11 @@ export const App: React.FC = () => {
 
       {/* Bottom Personal Portfolio Navigation Dock */}
       <PortfolioDock
-        currentPersonaId={currentPersonaId}
+        activeModelId={activeModelId}
         themeMode={themeMode}
         activeOrbitModuleId={activeOrbitModuleId}
         onSelectModule={handleSelectOrbitItem}
-        onSelectPersona={handleSelectPersona}
+        onSelectModel={handleSelectModel}
       />
 
       {/* Glassmorphism Circular 3D Asset Loading Progress Indicator */}

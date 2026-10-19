@@ -1,20 +1,21 @@
 import React from 'react';
-import { OrbitModuleId, PersonaId, ThemeMode } from '../types';
+import { OrbitModuleId, BuiltinModelId, ThemeMode } from '../types';
+import { MODEL_PRESETS } from '../data/modelsConfig';
 
 interface PortfolioDockProps {
-  currentPersonaId: PersonaId;
+  activeModelId: BuiltinModelId;
   themeMode: ThemeMode;
   activeOrbitModuleId: OrbitModuleId | null;
   onSelectModule: (id: OrbitModuleId) => void;
-  onSelectPersona: (id: PersonaId) => void;
+  onSelectModel: (id: BuiltinModelId) => void;
 }
 
 export const PortfolioDock: React.FC<PortfolioDockProps> = ({
-  currentPersonaId,
+  activeModelId,
   themeMode,
   activeOrbitModuleId,
   onSelectModule,
-  onSelectPersona,
+  onSelectModel,
 }) => {
   const isDark = themeMode === 'dark';
 
@@ -25,19 +26,13 @@ export const PortfolioDock: React.FC<PortfolioDockProps> = ({
     { id: 'contact', emoji: '🎧', title: '联络交流', hint: '地月 · 社交渠道' },
   ];
 
-  const personas: { id: PersonaId; emoji: string; name: string }[] = [
-    { id: 'explorer', emoji: '🧑🏻‍💻', name: '个人介绍' },
-    { id: 'creator', emoji: '⚡', name: '深度工程' },
-    { id: 'lifestyle', emoji: '🌿', name: '生活常态' },
-  ];
-
   return (
     <footer className="fixed bottom-0 left-0 right-0 z-20 px-3 sm:px-4 pb-3 sm:pb-4 flex flex-col items-center gap-2 pointer-events-none max-w-full">
       {/* Interactive Helper Hint */}
       <div className="glass-pill px-3 py-1 rounded-full text-[11px] flex items-center gap-1.5 shadow-xs pointer-events-auto transition-opacity opacity-90 hover:opacity-100">
         <span className="text-sky-500 animate-pulse">●</span>
         <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>
-          3D 展台可自由拖拽旋转 · 点击环绕的土星、狐狸与纸飞机打开介绍
+          3D 展台可自由拖拽旋转 · 点击环绕的土星、狐狸与纸飞机打开介绍 · 底部右侧切换主角
         </span>
       </div>
 
@@ -68,30 +63,30 @@ export const PortfolioDock: React.FC<PortfolioDockProps> = ({
           })}
         </div>
 
-        <div className={`h-4 w-px mx-0.5 sm:mx-1 ${isDark ? 'bg-white/15' : 'bg-slate-300/80'}`} />
+        <div className={`h-4 w-px mx-0.5 sm:mx-1 shrink-0 ${isDark ? 'bg-white/15' : 'bg-slate-300/80'}`} />
 
-        {/* Persona Mode Switch */}
+        {/* 3D 主角团切换（5 个手办模型） */}
         <div className="flex items-center gap-1">
-          {personas.map((p) => {
-            const isCurrent = currentPersonaId === p.id;
+          {MODEL_PRESETS.map((model) => {
+            const isCurrent = activeModelId === model.id;
             return (
               <button
-                key={p.id}
+                key={model.id}
                 type="button"
-                onClick={() => onSelectPersona(p.id)}
+                onClick={() => onSelectModel(model.id)}
                 className={`px-2 sm:px-2.5 py-1 rounded-full text-[11px] transition flex items-center gap-1 cursor-pointer whitespace-nowrap ${
                   isCurrent
                     ? isDark
                       ? 'bg-indigo-500/30 text-indigo-300 border border-indigo-400/50 font-semibold'
-                      : 'bg-indigo-50 text-indigo-700 border border-indigo-200/80 font-semibold'
+                      : 'bg-indigo-500/15 text-indigo-600 border border-indigo-400/50 font-semibold'
                     : isDark
-                    ? 'text-slate-400 hover:text-slate-200'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'text-slate-400 hover:bg-white/10 hover:text-white border border-transparent'
+                    : 'text-slate-500 hover:bg-white/70 hover:text-slate-900 border border-transparent'
                 }`}
-                title={`切换为「${p.name}」模式`}
+                title={`${model.name} · ${model.desc}`}
               >
-                <span>{p.emoji}</span>
-                <span className="hidden md:inline">{p.name}</span>
+                <span className="text-sm">{model.emoji}</span>
+                <span className="hidden md:inline text-[11px]">{model.name.replace(/版$/, '')}</span>
               </button>
             );
           })}

@@ -38,7 +38,6 @@ interface ThreeCanvasProps {
   hairColor: number;
   themeMode: ThemeMode;
   activeModelId: BuiltinModelId;
-  externalModelFile?: File | null;
   onSelectOrbitItem: (moduleId: OrbitModuleId) => void;
   onHoverOrbitItem: (item: { id: OrbitModuleId; emoji: string; label: string; coords: ScreenCoord } | null) => void;
   onUpdateBadgeCoords: (coords: ScreenCoord | null) => void;
@@ -53,7 +52,6 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   hairColor,
   themeMode,
   activeModelId,
-  externalModelFile,
   onSelectOrbitItem,
   onHoverOrbitItem,
   onUpdateBadgeCoords,
@@ -471,6 +469,8 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     const characterRoot = new THREE.Group();
     characterPivot.add(characterRoot);
     characterRootRef.current = characterRoot;
+    // 程序化黏土小人已由 5 个手办风 GLB 主角团取代，构建体保持隐藏（后续任务再彻底摘除）
+    characterRoot.visible = false;
 
     // Polymer Clay / Porcelain Materials
     const skinMat = new THREE.MeshPhysicalMaterial({
@@ -1755,50 +1755,22 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     }
   }, [currentPersona, accessories, hairColor]);
 
-  // Load Model Preset or Custom GLB
+  // Load Model Preset GLB（5 个手办主角团，静态模型 + 待机浮动）
   useEffect(() => {
-    // 1. Procedural Mode
-    if (activeModelId === 'procedural') {
-      if (externalModelRef.current && characterPivotRef.current) {
-        characterPivotRef.current.remove(externalModelRef.current);
-        externalModelRef.current = null;
-      }
-      if (mixerRef.current) {
-        mixerRef.current.stopAllAction();
-        mixerRef.current = null;
-      }
-      currentActionsRef.current = {};
-      if (characterRootRef.current) {
-        characterRootRef.current.visible = true;
-      }
-      callbacksRef.current.onModelLoadedMessage?.('已切换为纯前端手作黏土 Q 版小人');
-      return;
-    }
-
-    // 2. Candidate URLs and Model Meta resolution
-    let candidateUrls: string[] = [];
-    let isBlob = false;
-    let modelDisplayName = '';
-
-    if (activeModelId === 'custom' && externalModelFile) {
-      const blobUrl = URL.createObjectURL(externalModelFile);
-      candidateUrls = [blobUrl];
-      isBlob = true;
-      modelDisplayName = externalModelFile.name;
-    } else {
-      const preset = MODEL_PRESETS.find((p) => p.id === activeModelId) || MODEL_PRESETS[0];
-      modelDisplayName = preset.name;
-      candidateUrls = getModelCandidateUrls(preset.path);
-    }
+    // Candidate URLs and Model Meta resolution
+    const preset = MODEL_PRESETS.find((p) => p.id === activeModelId) || MODEL_PRESETS[0];
+    const modelDisplayName = preset.name;
+    const candidateUrls = getModelCandidateUrls(preset.path);
 
     callbacksRef.current.onModelLoadedMessage?.(`正在载入 3D 模型【${modelDisplayName}】...`);
 
     let isCancelled = false;
     const loader = new GLTFLoader();
     
-    // Optional DRACO decoder support for user-uploaded custom models
+    // Draco 解码器本地分发（public/draco/，随 three r160 附带），
+    // 避免运行时依赖 gstatic CDN——5 个主角模型均为 Draco 编码，解码器是硬依赖
     const dracoLoader = new DRACOLoader();
-    dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
+    dracoLoader.setDecoderPath('draco/');
     loader.setDRACOLoader(dracoLoader);
 
     const tryLoadCandidate = (index: number) => {
@@ -1827,40 +1799,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           const modelScene = gltf.scene;
           externalModelRef.current = modelScene;
 
-          // 1. Remove background Plane mesh if present
-          const planeMesh = modelScene.getObjectByName('Plane');
-          if (planeMesh && planeMesh.parent) {
-            planeMesh.parent.remove(planeMesh);
-          }
-
-          // 2. Hide all weapon meshes for boy avatar so character is peaceful & modern
-          const weaponNames = new Set([
-            'One-handed Sword',
-            'shield_02',
-            'Two-handed Sword',
-            'quiver_02',
-            'arrow_02',
-            'stick_02',
-            'bow_03',
-            'Plane',
-            'shield',
-            'Two_Handed_Weapon',
-            'bow',
-            'rope',
-            'bow_H1',
-            'bow_H2',
-            'bow_L1',
-            'bow_L2',
-            'stick',
-            'One_Handed_Weapon_L',
-            'arrow',
-            'quiver',
-          ]);
-
           modelScene.traverse((child) => {
-            if (weaponNames.has(child.name)) {
-              child.visible = false;
-            }
             if ((child as THREE.Mesh).isMesh) {
               child.castShadow = true;
               child.receiveShadow = true;
@@ -1874,25 +1813,18 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
             }
           });
 
-          // 3. Calibrate scale and position directly onto pedestal
-          if (activeModelId === 'boy-avatar') {
-            // RPG Boy has skeleton height ~1.6m; scale to 1.38 brings height to 2.22m on pedestal
-            modelScene.scale.setScalar(1.38);
-            modelScene.position.set(0, 0, 0);
-          } else {
-            // Generic bounding box sizing for user-uploaded custom models
-            const box = new THREE.Box3().setFromObject(modelScene);
-            const size = box.getSize(new THREE.Vector3());
-            const maxDim = Math.max(size.x, size.y, size.z) || 1;
-            const targetHeight = 2.25;
-            const scale = targetHeight / maxDim;
-            modelScene.scale.setScalar(scale);
+          // Calibrate scale and position directly onto pedestal (generic bbox sizing)
+          const box = new THREE.Box3().setFromObject(modelScene);
+          const size = box.getSize(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z) || 1;
+          const targetHeight = 2.25;
+          const scale = targetHeight / maxDim;
+          modelScene.scale.setScalar(scale);
 
-            const scaledBox = new THREE.Box3().setFromObject(modelScene);
-            modelScene.position.y = -scaledBox.min.y;
-            modelScene.position.x = -(scaledBox.min.x + scaledBox.max.x) / 2;
-            modelScene.position.z = -(scaledBox.min.z + scaledBox.max.z) / 2;
-          }
+          const scaledBox = new THREE.Box3().setFromObject(modelScene);
+          modelScene.position.y = -scaledBox.min.y;
+          modelScene.position.x = -(scaledBox.min.x + scaledBox.max.x) / 2;
+          modelScene.position.z = -(scaledBox.min.z + scaledBox.max.z) / 2;
 
           // Bone Armature Animations (Idle, Wave, Dance)
           if (gltf.animations && gltf.animations.length > 0) {
@@ -1929,7 +1861,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
             const mapped = Math.min(98, Math.max(28, Math.round(28 + raw * 0.7)));
             callbacksRef.current.onLoadProgress?.(mapped, `正在加载 3D 角色 (${mapped}%)...`);
           } else if (xhr.loaded > 0) {
-            const approxTotal = 2.2 * 1024 * 1024;
+            const approxTotal = 1.0 * 1024 * 1024;
             const approx = Math.min(95, Math.max(28, Math.round(28 + (xhr.loaded / approxTotal) * 68)));
             callbacksRef.current.onLoadProgress?.(approx, `正在传输 3D 资产数据...`);
           }
@@ -1947,11 +1879,8 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
     return () => {
       isCancelled = true;
-      if (isBlob && candidateUrls[0]) {
-        URL.revokeObjectURL(candidateUrls[0]);
-      }
     };
-  }, [activeModelId, externalModelFile]);
+  }, [activeModelId]);
 
   return <div id="canvas-container" ref={containerRef} aria-label="3D 角色与星轨交互画布" />;
 };

@@ -73,7 +73,12 @@ export interface ScreenCoord {
   y: number;
 }
 
-export type BuiltinModelId = 'boy-avatar' | 'procedural' | 'custom';
+export type BuiltinModelId =
+  | 'char-classic-capybara'
+  | 'char-scholar'
+  | 'char-worker'
+  | 'char-home'
+  | 'char-sports';
 
 export interface ModelPreset {
   id: BuiltinModelId;
