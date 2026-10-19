@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { MODEL_PRESETS } from '../data/modelsConfig';
 import { getModelCandidateUrls } from '../utils/assetUrl';
 import {
@@ -305,11 +306,16 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
     // Cinema-grade ACES Filmic Tone Mapping
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.18;
+    renderer.toneMappingExposure = 1.28;
     rendererRef.current = renderer;
 
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
+
+    // Studio-like ambient environment (soft global fill, lifts model shading)
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    const environmentScene = new RoomEnvironment();
+    scene.environment = pmremGenerator.fromScene(environmentScene, 0.04).texture;
 
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
@@ -319,8 +325,8 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     hemiLight.position.set(0, 10, 0);
     scene.add(hemiLight);
 
-    const dirLight = new THREE.DirectionalLight(0xfff8f0, 0.92);
-    dirLight.position.set(4.2, 7.8, 5.5);
+    const dirLight = new THREE.DirectionalLight(0xfff8f0, 1.0);
+    dirLight.position.set(-4.5, 5.0, 5.8);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 1024;
     dirLight.shadow.mapSize.height = 1024;
@@ -332,6 +338,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     dirLight.shadow.camera.top = d;
     dirLight.shadow.camera.bottom = -d;
     dirLight.shadow.bias = -0.0004;
+    dirLight.shadow.radius = 4;
     scene.add(dirLight);
 
     const fillLight = new THREE.DirectionalLight(0xe0e7ff, 0.52);
@@ -1806,9 +1813,10 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
               const m = (child as THREE.Mesh).material;
               if (m && (m as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
                 const stdMat = m as THREE.MeshStandardMaterial;
-                stdMat.roughness = Math.min(stdMat.roughness ?? 0.5, 0.55);
+                // Soft vinyl/figurine look: matte diffuse with gentle env sheen
+                stdMat.roughness = 0.65;
                 stdMat.metalness = Math.max(stdMat.metalness ?? 0.05, 0.08);
-                stdMat.envMapIntensity = 1.25;
+                stdMat.envMapIntensity = 1.6;
               }
             }
           });
