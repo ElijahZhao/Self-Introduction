@@ -162,19 +162,6 @@ body.dark .wave-bar {
   100% { transform: scaleY(1.35); opacity: 1; }
 }
 
-/* Blurred text placeholder effect */
-.video-blur-mode .blur-target {
-  filter: blur(3.2px);
-  opacity: 0.68;
-  letter-spacing: 0.02em;
-  transition: filter 0.35s ease, opacity 0.35s ease;
-}
-
-.video-blur-mode .blur-target:hover {
-  filter: blur(0px);
-  opacity: 1;
-}
-
 /* Modal transition */
 #info-modal-wrapper {
   pointer-events: none;

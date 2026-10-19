@@ -12,7 +12,6 @@ class AudioEngineService {
   private uiSynth: Tone.PolySynth | null = null;
   private chimeSynth: Tone.PolySynth | null = null;
   private currentPersona: PersonaId = 'explorer';
-  private customAudioEl: HTMLAudioElement | null = null;
   private isSpeaking = false;
   private speakingListeners: ((speaking: boolean) => void)[] = [];
   private bgmListeners: ((playing: boolean) => void)[] = [];
@@ -177,10 +176,6 @@ class AudioEngineService {
   }
 
   public stopVoice(): void {
-    if (this.customAudioEl) {
-      this.customAudioEl.pause();
-      this.customAudioEl.currentTime = 0;
-    }
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
@@ -189,21 +184,11 @@ class AudioEngineService {
 
   public playVoiceIntro(
     textToRead: string,
-    customVoiceBlobUrl: string | null,
     onFallbackError?: (msg: string) => void
   ): void {
     this.playSFX('tap');
     if (this.isSpeaking) {
       this.stopVoice();
-      return;
-    }
-
-    if (customVoiceBlobUrl) {
-      this.customAudioEl = new Audio(customVoiceBlobUrl);
-      this.notifySpeaking(true);
-      this.customAudioEl.onended = () => this.notifySpeaking(false);
-      this.customAudioEl.onerror = () => this.notifySpeaking(false);
-      this.customAudioEl.play().catch(() => this.notifySpeaking(false));
       return;
     }
 

@@ -15,7 +15,6 @@ import { Header } from './components/Header';
 import { OrbitNav } from './components/OrbitNav';
 import { InfoModal } from './components/InfoModal';
 import { PortfolioDock } from './components/PortfolioDock';
-import { ConfigDrawer } from './components/ConfigDrawer';
 import { FloatingWaveBadge } from './components/FloatingWaveBadge';
 import { OrbitHoverTooltip } from './components/OrbitHoverTooltip';
 import { Toast } from './components/Toast';
@@ -32,24 +31,13 @@ export const App: React.FC = () => {
   });
 
   // Profile Configuration
-  const [profileConfig, setProfileConfig] = useState<ProfileConfig>(() => {
-    try {
-      const savedName = localStorage.getItem('avatar_portfolio_name');
-      if (savedName) {
-        return {
-          ...INITIAL_PROFILE_CONFIG,
-          name: savedName,
-        };
-      }
-    } catch (e) {}
-    return INITIAL_PROFILE_CONFIG;
-  });
+  const [profileConfig] = useState<ProfileConfig>(INITIAL_PROFILE_CONFIG);
 
   const [currentPersonaId, setCurrentPersonaId] = useState<PersonaId>('explorer');
   const currentPersona = profileConfig.personas[currentPersonaId];
 
   // 3D Male Avatar Model Preset (Default to open-source GitHub model: RPG Boy)
-  const [activeModelId, setActiveModelId] = useState<BuiltinModelId>(() => {
+  const [activeModelId] = useState<BuiltinModelId>(() => {
     try {
       const savedModel = localStorage.getItem('avatar_portfolio_model');
       if (savedModel && (savedModel === 'boy-avatar' || savedModel === 'procedural')) {
@@ -75,11 +63,8 @@ export const App: React.FC = () => {
   const [bgmInitialized, setBgmInitialized] = useState(false);
   const [sfxEnabled, setSfxEnabled] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [customVoiceFileName, setCustomVoiceFileName] = useState<string | null>(null);
 
   // View & Modal state
-  const [isBlurMode, setIsBlurMode] = useState(false);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [activeOrbitModuleId, setActiveOrbitModuleId] = useState<OrbitModuleId | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -91,9 +76,6 @@ export const App: React.FC = () => {
     coords: ScreenCoord;
   } | null>(null);
   const [badgeCoords, setBadgeCoords] = useState<ScreenCoord | null>(null);
-
-  // External 3D model
-  const [externalModelFile, setExternalModelFile] = useState<File | null>(null);
 
   // 3D Model Loading Progress State
   const [loadingProgress, setLoadingProgress] = useState(15);
@@ -177,20 +159,6 @@ export const App: React.FC = () => {
     setSfxEnabled(nextState);
   };
 
-  const handleToggleBlur = () => {
-    setIsBlurMode((prev) => !prev);
-    audioEngine.playSFX('tap');
-    showToast(!isBlurMode ? '已开启演示毛玻璃模糊态' : '已恢复清晰文本展示');
-  };
-
-  const handleSelectModel = (id: BuiltinModelId) => {
-    setActiveModelId(id);
-    try {
-      localStorage.setItem('avatar_portfolio_model', id);
-    } catch (e) {}
-    audioEngine.playSFX('dressup');
-  };
-
   const handleSelectPersona = (id: PersonaId) => {
     if (id === currentPersonaId) return;
     audioEngine.playSFX('dressup');
@@ -240,7 +208,7 @@ export const App: React.FC = () => {
     if (isSpeaking) {
       audioEngine.stopVoice();
     } else {
-      audioEngine.playVoiceIntro(text, profileConfig.customVoiceBlobUrl);
+      audioEngine.playVoiceIntro(text);
     }
   };
 
@@ -248,87 +216,6 @@ export const App: React.FC = () => {
     navigator.clipboard?.writeText(text);
     audioEngine.playSFX('tap');
     showToast('已成功复制到剪贴板！');
-  };
-
-  const handleOpenDrawer = () => {
-    audioEngine.playSFX('tap');
-    setIsDrawerOpen(true);
-  };
-
-  const handleCloseDrawer = () => {
-    audioEngine.playSFX('tap');
-    setIsDrawerOpen(false);
-  };
-
-  const handleUploadVoice = (file: File) => {
-    if (profileConfig.customVoiceBlobUrl) {
-      URL.revokeObjectURL(profileConfig.customVoiceBlobUrl);
-    }
-    const blobUrl = URL.createObjectURL(file);
-    setProfileConfig((prev) => ({
-      ...prev,
-      customVoiceBlobUrl: blobUrl,
-    }));
-    setCustomVoiceFileName(file.name);
-    showToast('真人语音加载成功！打开任意环绕物弹窗点击 🔊 即可试听');
-  };
-
-  const handleClearVoice = () => {
-    if (profileConfig.customVoiceBlobUrl) {
-      URL.revokeObjectURL(profileConfig.customVoiceBlobUrl);
-    }
-    setProfileConfig((prev) => ({
-      ...prev,
-      customVoiceBlobUrl: null,
-    }));
-    setCustomVoiceFileName(null);
-    showToast('已恢复为浏览器智能中文语音朗读 (TTS)');
-  };
-
-  const handleUploadModel = (file: File) => {
-    setExternalModelFile(file);
-    setActiveModelId('custom');
-    showToast(`正在加载本地 3D 模型：${file.name}...`);
-  };
-
-  const handleResetModel = () => {
-    setExternalModelFile(null);
-    setActiveModelId('boy-avatar');
-    audioEngine.playSFX('tap');
-    showToast('已重置为默认赵玉林 3D 动漫分身模型');
-  };
-
-  const handleSaveProfile = (newName: string, newAbout: string) => {
-    const trimmedName = newName.trim() || '赵玉林 · Elijah Zhao';
-    const trimmedAbout = newAbout.trim();
-
-    setProfileConfig((prev) => {
-      const updatedPersonas = { ...prev.personas };
-      if (trimmedAbout) {
-        updatedPersonas[currentPersonaId] = {
-          ...updatedPersonas[currentPersonaId],
-          modules: {
-            ...updatedPersonas[currentPersonaId].modules,
-            about: {
-              ...updatedPersonas[currentPersonaId].modules.about,
-              text: trimmedAbout,
-            },
-          },
-        };
-      }
-      return {
-        ...prev,
-        name: trimmedName,
-        personas: updatedPersonas,
-      };
-    });
-
-    try {
-      localStorage.setItem('avatar_portfolio_name', trimmedName);
-    } catch (e) {}
-
-    setIsDrawerOpen(false);
-    showToast('个人资料修改已实时生效！');
   };
 
   // Mobile cycle orbit
@@ -349,7 +236,6 @@ export const App: React.FC = () => {
         hairColor={hairColor}
         themeMode={themeMode}
         activeModelId={activeModelId}
-        externalModelFile={externalModelFile}
         onSelectOrbitItem={handleSelectOrbitItem}
         onHoverOrbitItem={setHoverData}
         onUpdateBadgeCoords={setBadgeCoords}
@@ -377,12 +263,9 @@ export const App: React.FC = () => {
         bgmPlaying={bgmPlaying}
         bgmInitialized={bgmInitialized}
         sfxEnabled={sfxEnabled}
-        isBlurMode={isBlurMode}
         onToggleTheme={handleToggleTheme}
         onToggleBGM={handleToggleBGM}
         onToggleSFX={handleToggleSFX}
-        onToggleBlur={handleToggleBlur}
-        onOpenDrawer={handleOpenDrawer}
       />
 
       {/* Left Quick Orbit Trigger Chips */}
@@ -397,14 +280,11 @@ export const App: React.FC = () => {
         moduleId={activeOrbitModuleId}
         currentPersona={currentPersona}
         themeMode={themeMode}
-        isBlurMode={isBlurMode}
         isSpeaking={isSpeaking}
-        hasCustomVoice={Boolean(profileConfig.customVoiceBlobUrl)}
         onClose={handleCloseModal}
         onPlayVoice={handlePlayVoice}
         onSwitchPersona={handleSelectPersona}
         onCopyText={handleCopyText}
-        onOpenDrawer={handleOpenDrawer}
       />
 
       {/* Bottom Personal Portfolio Navigation Dock */}
@@ -414,25 +294,6 @@ export const App: React.FC = () => {
         activeOrbitModuleId={activeOrbitModuleId}
         onSelectModule={handleSelectOrbitItem}
         onSelectPersona={handleSelectPersona}
-        onOpenDrawer={handleOpenDrawer}
-      />
-
-      {/* Right Configuration & GitHub 3D Models Drawer */}
-      <ConfigDrawer
-        isOpen={isDrawerOpen}
-        themeMode={themeMode}
-        userName={profileConfig.name}
-        aboutText={currentPersona.modules.about.text}
-        hasCustomVoice={Boolean(profileConfig.customVoiceBlobUrl)}
-        customVoiceFileName={customVoiceFileName}
-        activeModelId={activeModelId}
-        onClose={handleCloseDrawer}
-        onSelectModel={handleSelectModel}
-        onUploadVoice={handleUploadVoice}
-        onClearVoice={handleClearVoice}
-        onUploadModel={handleUploadModel}
-        onResetModel={handleResetModel}
-        onSaveProfile={handleSaveProfile}
       />
 
       {/* Glassmorphism Circular 3D Asset Loading Progress Indicator */}

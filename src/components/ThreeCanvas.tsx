@@ -38,7 +38,7 @@ interface ThreeCanvasProps {
   hairColor: number;
   themeMode: ThemeMode;
   activeModelId: BuiltinModelId;
-  externalModelFile: File | null;
+  externalModelFile?: File | null;
   onSelectOrbitItem: (moduleId: OrbitModuleId) => void;
   onHoverOrbitItem: (item: { id: OrbitModuleId; emoji: string; label: string; coords: ScreenCoord } | null) => void;
   onUpdateBadgeCoords: (coords: ScreenCoord | null) => void;

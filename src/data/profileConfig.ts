@@ -4,7 +4,6 @@ export const HAIR_PALETTES = [0x2c3e50, 0x4a4e69, 0xa67c68, 0x8d99ae, 0x1a202c];
 
 export const INITIAL_PROFILE_CONFIG: ProfileConfig = {
   name: '赵玉林 · Elijah Zhao',
-  customVoiceBlobUrl: null,
   personas: {
     explorer: {
       id: 'explorer',
@@ -107,9 +106,7 @@ export const INITIAL_PROFILE_CONFIG: ProfileConfig = {
           subtitle: '✈️ 折纸飞机 · 核心技术方案',
           text: '本个人展台采用了一系列生产级优化技术：\n1. 【智能二级子路径 CDN 嗅探】：自适应兼容本地开发与 GitHub Pages 部署，支持多级资源热回退机制。\n2. 【DRACO 与骨骼流优化】：集成 DRACO 硬件解码加速器，保证 3D 模型在秒级完成载入。\n3. 【Tone.js 空间微音效】：配合鼠标悬浮与点击生成程序化和弦微音效。',
           tags: ['🌟 Web Audio 引擎', '⚙️ GitHub Actions 自动化', '🎨 玻璃拟物风格'],
-          links: [
-            { label: '⚙️ 打开配置抽屉自定义个人信息', openDrawer: true },
-          ],
+          links: [],
         },
         hobbies: {
           title: '开发环境与工具链',

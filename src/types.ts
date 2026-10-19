@@ -6,7 +6,6 @@ export interface ActionLink {
   label: string;
   actionPersona?: PersonaId;
   copyText?: string;
-  openDrawer?: boolean;
 }
 
 export interface ModuleData {
@@ -48,7 +47,6 @@ export interface PersonaConfig {
 
 export interface ProfileConfig {
   name: string;
-  customVoiceBlobUrl: string | null;
   personas: Record<PersonaId, PersonaConfig>;
 }
 

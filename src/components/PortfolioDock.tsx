@@ -7,7 +7,6 @@ interface PortfolioDockProps {
   activeOrbitModuleId: OrbitModuleId | null;
   onSelectModule: (id: OrbitModuleId) => void;
   onSelectPersona: (id: PersonaId) => void;
-  onOpenDrawer: () => void;
 }
 
 export const PortfolioDock: React.FC<PortfolioDockProps> = ({
@@ -16,7 +15,6 @@ export const PortfolioDock: React.FC<PortfolioDockProps> = ({
   activeOrbitModuleId,
   onSelectModule,
   onSelectPersona,
-  onOpenDrawer,
 }) => {
   const isDark = themeMode === 'dark';
 
@@ -97,19 +95,6 @@ export const PortfolioDock: React.FC<PortfolioDockProps> = ({
               </button>
             );
           })}
-
-          {/* Quick Drawer trigger */}
-          <button
-            type="button"
-            onClick={onOpenDrawer}
-            className={`p-1.5 rounded-full text-xs transition cursor-pointer ml-0.5 ${
-              isDark ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-500 hover:text-slate-800 hover:bg-white/60'
-            }`}
-            title="自定义个人信息与设置"
-            aria-label="打开设置"
-          >
-            ⚙️
-          </button>
         </div>
       </div>
     </footer>

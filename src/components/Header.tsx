@@ -8,12 +8,9 @@ interface HeaderProps {
   bgmPlaying: boolean;
   bgmInitialized: boolean;
   sfxEnabled: boolean;
-  isBlurMode: boolean;
   onToggleTheme: () => void;
   onToggleBGM: () => void;
   onToggleSFX: () => void;
-  onToggleBlur: () => void;
-  onOpenDrawer: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -23,12 +20,9 @@ export const Header: React.FC<HeaderProps> = ({
   bgmPlaying,
   bgmInitialized,
   sfxEnabled,
-  isBlurMode,
   onToggleTheme,
   onToggleBGM,
   onToggleSFX,
-  onToggleBlur,
-  onOpenDrawer,
 }) => {
   const isDark = themeMode === 'dark';
 
@@ -67,7 +61,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Right: Audio Controls, Theme Switch, Blur Demo Toggle & Config Drawer */}
+      {/* Right: Audio Controls & Theme Switch */}
       <div className="flex items-center gap-2 pointer-events-auto flex-wrap">
         {/* Light / Dark Mode Toggle */}
         <button
@@ -111,31 +105,6 @@ export const Header: React.FC<HeaderProps> = ({
           <span id="sfx-label" className="hidden sm:inline">
             {sfxEnabled ? 'UI 音效: 开' : 'UI 音效: 关'}
           </span>
-        </button>
-
-        {/* Video Blur Placeholder Style Toggle */}
-        <button
-          id="btn-blur-toggle"
-          type="button"
-          onClick={onToggleBlur}
-          className="glass-pill px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:text-slate-900 transition flex items-center gap-1.5 cursor-pointer"
-          title="切换参考视频同款模糊文字占位风格与清晰文字"
-        >
-          <span id="blur-icon">{isBlurMode ? '🌫️' : '👁️'}</span>
-          <span id="blur-label" className="hidden md:inline">
-            {isBlurMode ? '视频模糊风' : '清晰正文'}
-          </span>
-        </button>
-
-        {/* Customize / GitHub Guide Drawer Button */}
-        <button
-          id="btn-open-drawer"
-          type="button"
-          onClick={onOpenDrawer}
-          className="glass-pill px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:text-slate-900 transition flex items-center gap-1.5 cursor-pointer"
-        >
-          <span>⚙️</span>
-          <span>配置与 GitHub 部署</span>
         </button>
       </div>
     </header>

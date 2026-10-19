@@ -6,14 +6,11 @@ interface InfoModalProps {
   moduleId: OrbitModuleId | null;
   currentPersona: PersonaConfig;
   themeMode: ThemeMode;
-  isBlurMode: boolean;
   isSpeaking: boolean;
-  hasCustomVoice: boolean;
   onClose: () => void;
   onPlayVoice: (textToRead: string) => void;
   onSwitchPersona: (personaId: PersonaId) => void;
   onCopyText: (text: string) => void;
-  onOpenDrawer: () => void;
 }
 
 export const InfoModal: React.FC<InfoModalProps> = ({
@@ -21,14 +18,11 @@ export const InfoModal: React.FC<InfoModalProps> = ({
   moduleId,
   currentPersona,
   themeMode,
-  isBlurMode,
   isSpeaking,
-  hasCustomVoice,
   onClose,
   onPlayVoice,
   onSwitchPersona,
   onCopyText,
-  onOpenDrawer,
 }) => {
   if (!moduleId) return null;
   const mod = currentPersona.modules[moduleId];
@@ -104,7 +98,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
         {/* Modal Body */}
         <div
           id="modal-body"
-          className={`${isBlurMode ? 'blur-target' : ''} text-sm leading-relaxed space-y-2.5 pr-10 max-h-[44vh] overflow-y-auto ${
+          className={`text-sm leading-relaxed space-y-2.5 pr-10 max-h-[44vh] overflow-y-auto ${
             isDark ? 'text-slate-200' : 'text-slate-700'
           }`}
         >
@@ -142,8 +136,6 @@ export const InfoModal: React.FC<InfoModalProps> = ({
                       onSwitchPersona(lnk.actionPersona);
                     } else if (lnk.copyText) {
                       onCopyText(lnk.copyText);
-                    } else if (lnk.openDrawer) {
-                      onOpenDrawer();
                     }
                   }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-medium transition shadow-xs cursor-pointer ${
@@ -178,9 +170,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
             />
             <span id="voice-status-text">
               {isSpeaking
-                ? hasCustomVoice
-                  ? '正在播放你的真人语音介绍...'
-                  : '正在为你语音朗读卡片介绍...'
+                ? '正在为你语音朗读卡片介绍...'
                 : '点击右侧喇叭收听语音介绍'}
             </span>
           </div>
