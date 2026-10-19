@@ -1578,21 +1578,13 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           const modelScene = gltf.scene;
           externalModelRef.current = modelScene;
 
-          // Auto scale to fit nicely on pedestal
-          const box = new THREE.Box3().setFromObject(modelScene);
-          const size = box.getSize(new THREE.Vector3());
-          const maxDim = Math.max(size.x, size.y, size.z) || 1;
-          const targetHeight = 2.25;
-          const scale = targetHeight / maxDim;
-          modelScene.scale.setScalar(scale);
+          // 1. Remove background Plane mesh if present
+          const planeMesh = modelScene.getObjectByName('Plane');
+          if (planeMesh && planeMesh.parent) {
+            planeMesh.parent.remove(planeMesh);
+          }
 
-          // Center on X and Z, place feet exactly on pedestal top (y = 0.0 inside characterPivot)
-          const scaledBox = new THREE.Box3().setFromObject(modelScene);
-          modelScene.position.y = -scaledBox.min.y;
-          modelScene.position.x = -(scaledBox.min.x + scaledBox.max.x) / 2;
-          modelScene.position.z = -(scaledBox.min.z + scaledBox.max.z) / 2;
-
-          // For male RPG boy avatar, hide game weapons so he is peaceful & modern
+          // 2. Hide all weapon meshes for boy avatar so character is peaceful & modern
           const weaponNames = new Set([
             'One-handed Sword',
             'shield_02',
@@ -1616,7 +1608,6 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
             'quiver',
           ]);
 
-          // Enable shadows and enhance materials
           modelScene.traverse((child) => {
             if (weaponNames.has(child.name)) {
               child.visible = false;
@@ -1626,6 +1617,26 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
               child.receiveShadow = true;
             }
           });
+
+          // 3. Calibrate scale and position directly onto pedestal
+          if (activeModelId === 'boy-avatar') {
+            // RPG Boy has skeleton height ~1.6m; scale to 1.38 brings height to 2.22m on pedestal
+            modelScene.scale.setScalar(1.38);
+            modelScene.position.set(0, 0, 0);
+          } else {
+            // Generic bounding box sizing for user-uploaded custom models
+            const box = new THREE.Box3().setFromObject(modelScene);
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z) || 1;
+            const targetHeight = 2.25;
+            const scale = targetHeight / maxDim;
+            modelScene.scale.setScalar(scale);
+
+            const scaledBox = new THREE.Box3().setFromObject(modelScene);
+            modelScene.position.y = -scaledBox.min.y;
+            modelScene.position.x = -(scaledBox.min.x + scaledBox.max.x) / 2;
+            modelScene.position.z = -(scaledBox.min.z + scaledBox.max.z) / 2;
+          }
 
           // Bone Armature Animations (Idle, Wave, Dance)
           if (gltf.animations && gltf.animations.length > 0) {
