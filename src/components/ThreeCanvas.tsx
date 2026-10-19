@@ -84,6 +84,8 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     dirLight?: THREE.DirectionalLight;
     fillLight?: THREE.DirectionalLight;
     rimLight?: THREE.DirectionalLight;
+    themeRimLight?: THREE.PointLight;
+    backHighlightLight?: THREE.DirectionalLight;
   }>({});
 
   const pedestalMeshesRef = useRef<{
@@ -338,11 +340,21 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     fillLight.position.set(-4.5, 3.8, 3.5);
     scene.add(fillLight);
 
-    const rimLight = new THREE.DirectionalLight(0xdbeafe, 0.72);
+    const rimLight = new THREE.DirectionalLight(0xdbeafe, 0.88);
     rimLight.position.set(-4.2, 4.5, -4.8);
     scene.add(rimLight);
 
-    lightsRef.current = { hemiLight, dirLight, fillLight, rimLight };
+    // Dynamic Theme-based Point Light for rich volumetric rim edge lighting
+    const themeRimLight = new THREE.PointLight(currentPersona.orbitColor || 0x38bdf8, 1.8, 9, 1.8);
+    themeRimLight.position.set(-2.8, 2.4, -3.2);
+    scene.add(themeRimLight);
+
+    // Back glancing highlight for crisp hair and shoulder silhouette
+    const backHighlightLight = new THREE.DirectionalLight(0xffffff, 0.68);
+    backHighlightLight.position.set(3.8, 5.2, -4.5);
+    scene.add(backHighlightLight);
+
+    lightsRef.current = { hemiLight, dirLight, fillLight, rimLight, themeRimLight, backHighlightLight };
 
     // Floor Shadow Receiver Plane
     const shadowPlane = new THREE.Mesh(
@@ -1396,8 +1408,9 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
       // Smooth rotation dampening
       currentRotationYRef.current += (targetRotationYRef.current - currentRotationYRef.current) * 0.11;
+      const rot = currentRotationYRef.current;
       if (characterPivotRef.current) {
-        characterPivotRef.current.rotation.y = currentRotationYRef.current;
+        characterPivotRef.current.rotation.y = rot;
 
         if (characterJumpOffsetRef.current > 0 || characterJumpVelocityRef.current !== 0) {
           characterJumpOffsetRef.current += characterJumpVelocityRef.current;
@@ -1410,6 +1423,50 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         // Subtle floating bobbing
         characterPivotRef.current.position.y =
           0.13 + Math.sin(elapsed * 2.2) * 0.022 + characterJumpOffsetRef.current;
+      }
+
+      // Dynamic Environmental Rim & Contour Lighting micro-adjustment on model rotation
+      const lights = lightsRef.current;
+      if (lights.rimLight) {
+        // High-angle silhouette rim light dynamically sweeps to catch hair & shoulder contours
+        const rimAngle = -rot * 0.65 + Math.PI * 0.82;
+        const rimDist = 5.2;
+        lights.rimLight.position.set(
+          Math.sin(rimAngle) * rimDist,
+          4.5 + Math.sin(rot * 0.75) * 0.45,
+          Math.cos(rimAngle) * rimDist
+        );
+      }
+
+      if (lights.themeRimLight) {
+        // Theme-colored soft volumetric point light follows opposite side at shoulder height
+        const themeAngle = -rot * 0.82 - Math.PI * 0.65;
+        const themeDist = 3.3;
+        lights.themeRimLight.position.set(
+          Math.sin(themeAngle) * themeDist,
+          2.0 + Math.cos(rot * 0.5) * 0.35,
+          Math.cos(themeAngle) * themeDist
+        );
+      }
+
+      if (lights.backHighlightLight) {
+        // Crisp hair and shoulder edge glint
+        const backAngle = -rot * 0.38 + Math.PI * 1.18;
+        lights.backHighlightLight.position.set(
+          Math.sin(backAngle) * 4.6,
+          5.0,
+          Math.cos(backAngle) * 4.6
+        );
+      }
+
+      if (lights.fillLight) {
+        // Soft front-fill balance
+        const fillAngle = -rot * 0.22 - Math.PI * 0.28;
+        lights.fillLight.position.set(
+          Math.sin(fillAngle) * 4.4,
+          3.6,
+          Math.cos(fillAngle) * 4.4
+        );
       }
 
       // Natural eye blinking on procedural 3D eyes
@@ -1599,11 +1656,21 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     if (lights.rimLight) {
       if (isDark) {
         lights.rimLight.color.setHex(currentPersona.orbitColor);
-        lights.rimLight.intensity = 1.15;
+        lights.rimLight.intensity = 1.35;
       } else {
-        lights.rimLight.color.setHex(0xdbeafe);
-        lights.rimLight.intensity = 0.72;
+        lights.rimLight.color.setHex(currentPersona.orbitColor);
+        lights.rimLight.intensity = 0.95;
       }
+    }
+
+    if (lights.themeRimLight) {
+      lights.themeRimLight.color.setHex(currentPersona.orbitColor);
+      lights.themeRimLight.intensity = isDark ? 2.4 : 1.7;
+    }
+
+    if (lights.backHighlightLight) {
+      lights.backHighlightLight.color.setHex(isDark ? 0xffffff : 0xfffaed);
+      lights.backHighlightLight.intensity = isDark ? 0.9 : 0.72;
     }
 
     const pedestal = pedestalMeshesRef.current;
@@ -1797,6 +1864,13 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
             if ((child as THREE.Mesh).isMesh) {
               child.castShadow = true;
               child.receiveShadow = true;
+              const m = (child as THREE.Mesh).material;
+              if (m && (m as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
+                const stdMat = m as THREE.MeshStandardMaterial;
+                stdMat.roughness = Math.min(stdMat.roughness ?? 0.5, 0.55);
+                stdMat.metalness = Math.max(stdMat.metalness ?? 0.05, 0.08);
+                stdMat.envMapIntensity = 1.25;
+              }
             }
           });
 
