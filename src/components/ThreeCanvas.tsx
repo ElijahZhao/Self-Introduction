@@ -1,6 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { MODEL_PRESETS } from '../data/modelsConfig';
+import { getModelCandidateUrls } from '../utils/assetUrl';
 import {
   PersonaConfig,
   OrbitModuleId,
@@ -1441,110 +1444,121 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       return;
     }
 
-    // 2. GLB Model Path resolution
-    let modelUrl = '';
+    // 2. Candidate URLs and Model Meta resolution
+    let candidateUrls: string[] = [];
     let isBlob = false;
     let modelDisplayName = '';
 
     if (activeModelId === 'custom' && externalModelFile) {
-      modelUrl = URL.createObjectURL(externalModelFile);
+      const blobUrl = URL.createObjectURL(externalModelFile);
+      candidateUrls = [blobUrl];
       isBlob = true;
       modelDisplayName = externalModelFile.name;
-    } else if (activeModelId === 'gemini-chan') {
-      modelUrl = '/models/gemini_chan.glb';
-      modelDisplayName = 'Gemini-chan 3D 萌系二次元手办 (GitHub 开源)';
-    } else if (activeModelId === 'crimson-chibi') {
-      modelUrl = '/models/crimson_chibi.glb';
-      modelDisplayName = 'Crimson Chibi Q版双马尾 (GitHub 开源)';
-    } else if (activeModelId === 'kaykit-mage') {
-      modelUrl = '/models/kaykit_mage.glb';
-      modelDisplayName = 'KayKit 黏土法师小人 (GitHub CC0 开源)';
-    } else if (activeModelId === 'kaykit-knight') {
-      modelUrl = '/models/kaykit_knight.glb';
-      modelDisplayName = 'KayKit 黏土骑士小人 (GitHub CC0 开源)';
-    } else if (activeModelId === 'robot-expressive') {
-      modelUrl = '/models/robot_expressive.glb';
-      modelDisplayName = 'Three.js 灵动卡通机器人 (官方素材库)';
     } else {
-      modelUrl = '/models/gemini_chan.glb';
-      modelDisplayName = 'Gemini-chan 3D 萌娘';
+      const preset = MODEL_PRESETS.find((p) => p.id === activeModelId) || MODEL_PRESETS[0];
+      modelDisplayName = preset.name;
+      candidateUrls = getModelCandidateUrls(preset.path);
     }
 
+    callbacksRef.current.onModelLoadedMessage?.(`正在载入 3D 模型【${modelDisplayName}】...`);
+
+    let isCancelled = false;
     const loader = new GLTFLoader();
-    loader.load(
-      modelUrl,
-      (gltf) => {
-        if (!characterPivotRef.current) return;
-        if (externalModelRef.current) {
-          characterPivotRef.current.remove(externalModelRef.current);
-          externalModelRef.current = null;
-        }
-        if (mixerRef.current) {
-          mixerRef.current.stopAllAction();
-          mixerRef.current = null;
-        }
-        currentActionsRef.current = {};
+    
+    // Optional DRACO decoder support for user-uploaded custom models
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
+    loader.setDRACOLoader(dracoLoader);
 
-        const modelScene = gltf.scene;
-        externalModelRef.current = modelScene;
+    const tryLoadCandidate = (index: number) => {
+      if (isCancelled) return;
+      if (index >= candidateUrls.length) {
+        console.error('All model candidate URLs failed to load:', candidateUrls);
+        callbacksRef.current.onModelLoadedMessage?.(`载入 3D 模型【${modelDisplayName}】失败，已保留原模型`);
+        return;
+      }
 
-        // Auto scale to fit nicely on pedestal
-        const box = new THREE.Box3().setFromObject(modelScene);
-        const size = box.getSize(new THREE.Vector3());
-        const maxDim = Math.max(size.x, size.y, size.z) || 1;
-        const targetHeight = activeModelId === 'robot-expressive' ? 2.1 : 2.35;
-        const scale = targetHeight / maxDim;
-        modelScene.scale.setScalar(scale);
-
-        // Center on X and Z, place feet exactly on pedestal top (y = 0.0 inside characterPivot)
-        const scaledBox = new THREE.Box3().setFromObject(modelScene);
-        modelScene.position.y = -scaledBox.min.y;
-        modelScene.position.x = -(scaledBox.min.x + scaledBox.max.x) / 2;
-        modelScene.position.z = -(scaledBox.min.z + scaledBox.max.z) / 2;
-
-        // Enable shadows and enhance materials
-        modelScene.traverse((child) => {
-          if ((child as THREE.Mesh).isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
+      const targetUrl = candidateUrls[index];
+      loader.load(
+        targetUrl,
+        (gltf) => {
+          if (isCancelled || !characterPivotRef.current) return;
+          if (externalModelRef.current) {
+            characterPivotRef.current.remove(externalModelRef.current);
+            externalModelRef.current = null;
           }
-        });
+          if (mixerRef.current) {
+            mixerRef.current.stopAllAction();
+            mixerRef.current = null;
+          }
+          currentActionsRef.current = {};
 
-        // Bone Armature Animations (Idle, Wave, Dance)
-        if (gltf.animations && gltf.animations.length > 0) {
-          const mixer = new THREE.AnimationMixer(modelScene);
-          mixerRef.current = mixer;
+          const modelScene = gltf.scene;
+          externalModelRef.current = modelScene;
 
-          gltf.animations.forEach((clip) => {
-            currentActionsRef.current[clip.name] = mixer.clipAction(clip);
+          // Auto scale to fit nicely on pedestal
+          const box = new THREE.Box3().setFromObject(modelScene);
+          const size = box.getSize(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z) || 1;
+          const targetHeight = activeModelId === 'robot-expressive' ? 2.1 : 2.35;
+          const scale = targetHeight / maxDim;
+          modelScene.scale.setScalar(scale);
+
+          // Center on X and Z, place feet exactly on pedestal top (y = 0.0 inside characterPivot)
+          const scaledBox = new THREE.Box3().setFromObject(modelScene);
+          modelScene.position.y = -scaledBox.min.y;
+          modelScene.position.x = -(scaledBox.min.x + scaledBox.max.x) / 2;
+          modelScene.position.z = -(scaledBox.min.z + scaledBox.max.z) / 2;
+
+          // Enable shadows and enhance materials
+          modelScene.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
           });
 
-          // Play default Idle or first animation
-          const idleAction =
-            currentActionsRef.current['Idle'] ||
-            currentActionsRef.current['idle'] ||
-            mixer.clipAction(gltf.animations[0]);
-          idleAction.play();
-        }
+          // Bone Armature Animations (Idle, Wave, Dance)
+          if (gltf.animations && gltf.animations.length > 0) {
+            const mixer = new THREE.AnimationMixer(modelScene);
+            mixerRef.current = mixer;
 
-        // Hide procedural mesh and show loaded GLB
-        if (characterRootRef.current) {
-          characterRootRef.current.visible = false;
+            gltf.animations.forEach((clip) => {
+              currentActionsRef.current[clip.name] = mixer.clipAction(clip);
+            });
+
+            // Play default Idle or first animation
+            const idleAction =
+              currentActionsRef.current['Idle'] ||
+              currentActionsRef.current['idle'] ||
+              mixer.clipAction(gltf.animations[0]);
+            idleAction.play();
+          }
+
+          // Hide procedural mesh and show loaded GLB
+          if (characterRootRef.current) {
+            characterRootRef.current.visible = false;
+          }
+          characterPivotRef.current.add(modelScene);
+          audioEngine.playSFX('dressup');
+          callbacksRef.current.onModelLoadedMessage?.(`已载入：${modelDisplayName}`);
+        },
+        undefined,
+        (err) => {
+          console.warn(`Failed to load model from candidate ${index + 1}/${candidateUrls.length} (${targetUrl}):`, err);
+          if (!isCancelled) {
+            tryLoadCandidate(index + 1);
+          }
         }
-        characterPivotRef.current.add(modelScene);
-        audioEngine.playSFX('dressup');
-        callbacksRef.current.onModelLoadedMessage?.(`已载入：${modelDisplayName}`);
-      },
-      undefined,
-      (err) => {
-        console.error('Failed to load GLB:', err);
-        callbacksRef.current.onModelLoadedMessage?.(`载入 3D 模型失败，已保留原模型`);
-      }
-    );
+      );
+    };
+
+    tryLoadCandidate(0);
 
     return () => {
-      if (isBlob) {
-        URL.revokeObjectURL(modelUrl);
+      isCancelled = true;
+      if (isBlob && candidateUrls[0]) {
+        URL.revokeObjectURL(candidateUrls[0]);
       }
     };
   }, [activeModelId, externalModelFile]);
