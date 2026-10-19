@@ -306,7 +306,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
     // Cinema-grade ACES Filmic Tone Mapping
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.16;
+    renderer.toneMappingExposure = 1.05;
     rendererRef.current = renderer;
 
     container.innerHTML = '';
@@ -325,7 +325,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     hemiLight.position.set(0, 10, 0);
     scene.add(hemiLight);
 
-    const dirLight = new THREE.DirectionalLight(0xfff8f0, 0.9);
+    const dirLight = new THREE.DirectionalLight(0xfff8f0, 0.8);
     dirLight.position.set(-4.5, 5.0, 5.8);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 1024;
@@ -1816,7 +1816,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
                 // Soft vinyl/figurine look: matte diffuse with gentle env sheen
                 stdMat.roughness = 0.65;
                 stdMat.metalness = Math.max(stdMat.metalness ?? 0.05, 0.08);
-                stdMat.envMapIntensity = 1.2;
+                stdMat.envMapIntensity = 1.0;
               }
             }
           });
