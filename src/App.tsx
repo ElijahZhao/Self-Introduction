@@ -12,7 +12,6 @@ import { INITIAL_PROFILE_CONFIG, HAIR_PALETTES } from './data/profileConfig';
 import { audioEngine } from './services/audioEngine';
 import { ThreeCanvas } from './components/ThreeCanvas';
 import { Header } from './components/Header';
-import { OrbitNav } from './components/OrbitNav';
 import { InfoModal } from './components/InfoModal';
 import { PortfolioDock } from './components/PortfolioDock';
 import { FloatingWaveBadge } from './components/FloatingWaveBadge';
@@ -266,12 +265,6 @@ export const App: React.FC = () => {
         onToggleTheme={handleToggleTheme}
         onToggleBGM={handleToggleBGM}
         onToggleSFX={handleToggleSFX}
-      />
-
-      {/* Left Quick Orbit Trigger Chips */}
-      <OrbitNav
-        activeModuleId={activeOrbitModuleId}
-        onSelectModule={handleSelectOrbitItem}
       />
 
       {/* Center Frosted-Glass Info Modal */}
