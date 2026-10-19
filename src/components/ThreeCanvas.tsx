@@ -33,6 +33,36 @@ interface ActivePunch {
   duration: number;
 }
 
+// Boost base-color texture saturation without touching scene lighting.
+// Re-renders the texture through a canvas with CSS saturate filter, keeps
+// brightness (lighting domain) untouched. Returns a new texture (or the
+// original when canvas/filter is unavailable).
+const boostTextureSaturation = (tex: THREE.Texture | null, factor: number): THREE.Texture | null => {
+  if (!tex || !tex.image) return tex;
+  const img = tex.image as HTMLImageElement | HTMLCanvasElement;
+  if (!img || !img.width || !img.height) return tex;
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return tex;
+    ctx.filter = `saturate(${factor})`;
+    ctx.drawImage(img as CanvasImageSource, 0, 0);
+    const boosted = new THREE.CanvasTexture(canvas);
+    boosted.colorSpace = tex.colorSpace;
+    boosted.flipY = tex.flipY;
+    boosted.wrapS = tex.wrapS;
+    boosted.wrapT = tex.wrapT;
+    boosted.anisotropy = tex.anisotropy;
+    tex.dispose();
+    return boosted;
+  } catch {
+    // fallback: keep original texture on any canvas/filter failure
+    return tex;
+  }
+};
+
 interface ThreeCanvasProps {
   currentPersona: PersonaConfig;
   accessories: AccessoryState;
@@ -1818,6 +1848,8 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
                 stdMat.roughness = 0.65;
                 stdMat.metalness = Math.max(stdMat.metalness ?? 0.05, 0.08);
                 stdMat.envMapIntensity = 0.7;
+                // Boost base-color saturation for vivid figurine colors (lighting untouched)
+                stdMat.map = boostTextureSaturation(stdMat.map, 1.25);
               }
             }
           });
