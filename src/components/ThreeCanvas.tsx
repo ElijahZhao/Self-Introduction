@@ -306,7 +306,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
     // Cinema-grade ACES Filmic Tone Mapping
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = 0.98;
     rendererRef.current = renderer;
 
     container.innerHTML = '';
@@ -321,11 +321,12 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     const mouse = new THREE.Vector2();
 
     // Studio Key, Fill and Rim Lights
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xdfe4ea, 0.98);
+    // Warm soft key light with natural skin-tone tint
+    const hemiLight = new THREE.HemisphereLight(0xfff0dc, 0xe8d5bc, 0.9);
     hemiLight.position.set(0, 10, 0);
     scene.add(hemiLight);
 
-    const dirLight = new THREE.DirectionalLight(0xfff8f0, 0.8);
+    const dirLight = new THREE.DirectionalLight(0xffe6c4, 0.72);
     dirLight.position.set(-4.5, 5.0, 5.8);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 1024;
@@ -341,11 +342,11 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     dirLight.shadow.radius = 4;
     scene.add(dirLight);
 
-    const fillLight = new THREE.DirectionalLight(0xe0e7ff, 0.52);
+    const fillLight = new THREE.DirectionalLight(0xffddbb, 0.4);
     fillLight.position.set(-4.5, 3.8, 3.5);
     scene.add(fillLight);
 
-    const rimLight = new THREE.DirectionalLight(0xdbeafe, 0.88);
+    const rimLight = new THREE.DirectionalLight(0xffe3c2, 0.88);
     rimLight.position.set(-4.2, 4.5, -4.8);
     scene.add(rimLight);
 
@@ -355,7 +356,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     scene.add(themeRimLight);
 
     // Back glancing highlight for crisp hair and shoulder silhouette
-    const backHighlightLight = new THREE.DirectionalLight(0xffffff, 0.68);
+    const backHighlightLight = new THREE.DirectionalLight(0xfff2e0, 0.68);
     backHighlightLight.position.set(3.8, 5.2, -4.5);
     scene.add(backHighlightLight);
 
