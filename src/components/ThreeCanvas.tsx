@@ -306,7 +306,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
     // Cinema-grade ACES Filmic Tone Mapping
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 0.98;
+    renderer.toneMappingExposure = 0.7;
     rendererRef.current = renderer;
 
     container.innerHTML = '';
@@ -322,11 +322,11 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
     // Studio Key, Fill and Rim Lights
     // Warm soft key light with natural skin-tone tint
-    const hemiLight = new THREE.HemisphereLight(0xfff0dc, 0xe8d5bc, 0.9);
+    const hemiLight = new THREE.HemisphereLight(0xfff0dc, 0xe8d5bc, 0.55);
     hemiLight.position.set(0, 10, 0);
     scene.add(hemiLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffe6c4, 0.72);
+    const dirLight = new THREE.DirectionalLight(0xffe6c4, 0.5);
     dirLight.position.set(-4.5, 5.0, 5.8);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 1024;
@@ -342,21 +342,21 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     dirLight.shadow.radius = 4;
     scene.add(dirLight);
 
-    const fillLight = new THREE.DirectionalLight(0xffddbb, 0.4);
+    const fillLight = new THREE.DirectionalLight(0xffddbb, 0.3);
     fillLight.position.set(-4.5, 3.8, 3.5);
     scene.add(fillLight);
 
-    const rimLight = new THREE.DirectionalLight(0xffe3c2, 0.88);
+    const rimLight = new THREE.DirectionalLight(0xffe3c2, 0.6);
     rimLight.position.set(-4.2, 4.5, -4.8);
     scene.add(rimLight);
 
     // Dynamic Theme-based Point Light for rich volumetric rim edge lighting
-    const themeRimLight = new THREE.PointLight(currentPersona.orbitColor || 0x38bdf8, 1.8, 9, 1.8);
+    const themeRimLight = new THREE.PointLight(currentPersona.orbitColor || 0x38bdf8, 1.2, 9, 1.8);
     themeRimLight.position.set(-2.8, 2.4, -3.2);
     scene.add(themeRimLight);
 
     // Back glancing highlight for crisp hair and shoulder silhouette
-    const backHighlightLight = new THREE.DirectionalLight(0xfff2e0, 0.68);
+    const backHighlightLight = new THREE.DirectionalLight(0xfff2e0, 0.45);
     backHighlightLight.position.set(3.8, 5.2, -4.5);
     scene.add(backHighlightLight);
 
@@ -1817,7 +1817,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
                 // Soft vinyl/figurine look: matte diffuse with gentle env sheen
                 stdMat.roughness = 0.65;
                 stdMat.metalness = Math.max(stdMat.metalness ?? 0.05, 0.08);
-                stdMat.envMapIntensity = 1.0;
+                stdMat.envMapIntensity = 0.7;
               }
             }
           });
