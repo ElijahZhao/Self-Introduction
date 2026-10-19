@@ -148,6 +148,10 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   const orbitingItemsRef = useRef<THREE.Group[]>([]);
   const orbitRingsRef = useRef<THREE.Object3D[]>([]);
   const rippleRingsRef = useRef<{ mesh: THREE.Mesh; active: boolean; age: number; delay: number }[]>([]);
+  const ambientParticlesRef = useRef<{
+    group: THREE.Group | null;
+    mat: THREE.PointsMaterial | null;
+  }>({ group: null, mat: null });
   const shockwavesRef = useRef<ActiveShockwave[]>([]);
   const punchedItemsRef = useRef<ActivePunch[]>([]);
   const dressupParticlesRef = useRef<THREE.Mesh[]>([]);
@@ -1268,6 +1272,46 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     });
 
     // -------------------------------------------------------------------------
+    // Ambient Particle Field & Saturn-style Particle Ring (decorative, no light)
+    // -------------------------------------------------------------------------
+    const ambientParticlesGroup = new THREE.Group();
+    const particleCount = 420;
+    const particlePositions = new Float32Array(particleCount * 3);
+    const particleSpeeds = new Float32Array(particleCount);
+    const particleRadii = new Float32Array(particleCount);
+    for (let i = 0; i < particleCount; i++) {
+      const band = i < 260 ? 0 : 1; // 0: inner soft halo, 1: outer particle ring
+      const radius = band === 0
+        ? 1.7 + Math.random() * 1.6
+        : 3.6 + Math.random() * 1.9;
+      const angle = Math.random() * Math.PI * 2;
+      const yBase = band === 0
+        ? 0.1 + Math.random() * 1.8
+        : -0.55 + Math.random() * 1.3;
+      particlePositions[i * 3] = Math.cos(angle) * radius;
+      particlePositions[i * 3 + 1] = yBase;
+      particlePositions[i * 3 + 2] = Math.sin(angle) * radius;
+      particleRadii[i] = radius;
+      particleSpeeds[i] = 0.05 + Math.random() * 0.14;
+    }
+    const particleGeo = new THREE.BufferGeometry();
+    particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+    const particleMat = new THREE.PointsMaterial({
+      color: currentPersona.orbitColor || 0x5ba8ff,
+      size: 0.035,
+      transparent: true,
+      opacity: 0.75,
+      sizeAttenuation: true,
+      depthWrite: false,
+    });
+    const particles = new THREE.Points(particleGeo, particleMat);
+    particles.userData = { speeds: particleSpeeds, radii: particleRadii, count: particleCount };
+    ambientParticlesGroup.add(particles);
+    ambientParticlesGroup.position.y = 0.15;
+    scene.add(ambientParticlesGroup);
+    ambientParticlesRef.current = { group: ambientParticlesGroup, mat: particleMat };
+
+    // -------------------------------------------------------------------------
     // Concentric Blue Soundwave Ripple Pool
     // -------------------------------------------------------------------------
     rippleRingsRef.current = [];
@@ -1559,11 +1603,32 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           obj.userData.angle += obj.userData.speed * delta;
           obj.position.set(
             Math.cos(obj.userData.angle) * obj.userData.radius,
-            -0.07,
-            Math.sin(obj.userData.angle) * obj.userData.radius
+            -0.07,            Math.sin(obj.userData.angle) * obj.userData.radius
           );
         }
       });
+
+      // Ambient particle field: slow collective spin + per-particle bob
+      const ap = ambientParticlesRef.current;
+      if (ap.group && ap.mat) {
+        ap.group.rotation.y += delta * 0.03;
+        const posAttr = (ap.group.children[0] as THREE.Points)?.geometry.getAttribute('position');
+        if (posAttr) {
+          const speeds = ap.group.children[0].userData.speeds as Float32Array;
+          const radii = ap.group.children[0].userData.radii as Float32Array;
+          const count = speeds?.length ?? 0;
+          const arr = posAttr.array as Float32Array;
+          for (let i = 0; i < count; i++) {
+            const angle = Math.atan2(arr[i * 3 + 2], arr[i * 3]);
+            const nextAngle = angle + speeds[i] * delta;
+            arr[i * 3] = Math.cos(nextAngle) * radii[i];
+            arr[i * 3 + 2] = Math.sin(nextAngle) * radii[i];
+            arr[i * 3 + 1] += Math.sin(elapsed * 1.4 + i) * 0.0004;
+          }
+          posAttr.needsUpdate = true;
+        }
+        ap.mat.color.set(currentPersona.orbitColor || 0x5ba8ff);
+      }
 
       // Update Expanding 3D Shockwave Rings (Translucent & Dissipating at Exact Hit Coordinate)
       for (let i = shockwavesRef.current.length - 1; i >= 0; i--) {

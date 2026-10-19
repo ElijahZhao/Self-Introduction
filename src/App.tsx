@@ -19,6 +19,9 @@ import { FloatingWaveBadge } from './components/FloatingWaveBadge';
 import { OrbitHoverTooltip } from './components/OrbitHoverTooltip';
 import { Toast } from './components/Toast';
 import { LoadingScreen } from './components/LoadingScreen';
+import { AuroraBackground } from './components/AuroraBackground';
+import { SplashCursor } from './components/SplashCursor';
+import { GsapEntrance } from './components/GsapEntrance';
 
 export const App: React.FC = () => {
   // Theme Mode (Light / Dark)
@@ -242,6 +245,43 @@ export const App: React.FC = () => {
 
   return (
     <div className="relative w-full h-full select-none overflow-hidden">
+      {/* Animated aurora backdrop behind the 3D stage */}
+      <div className="absolute inset-0 z-0 pointer-events-none" aria-hidden="true">
+        <AuroraBackground
+          colorStops={
+            themeMode === 'dark'
+              ? ['#3b4a7a', '#1f2937', '#5b4a8a']
+              : ['#dbe7ff', '#ffe9d2', '#ffd9e6']
+          }
+          direction="top"
+          height={0.55}
+          amplitude={1.2}
+          blend={0.65}
+          glow={0.7}
+          brightness={0.55}
+          layers={2}
+          speed={0.8}
+          lightMode={themeMode !== 'dark'}
+          opacity={0.85}
+        />
+      </div>
+
+      {/* Fullscreen splash cursor fluid effect */}
+      <SplashCursor
+        rainbow
+        colorSpeed={0.9}
+        intensity={0.7}
+        size={0.9}
+        swirl={2.4}
+        trail={0.8}
+        momentum={0.8}
+        shading={0.9}
+        quality="medium"
+        clickSplash
+        theme={themeMode === 'dark' ? 'dark' : 'light'}
+        zIndex={40}
+      />
+
       {/* 3D WebGL Canvas */}
       <ThreeCanvas
         currentPersona={currentPersona}

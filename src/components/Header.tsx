@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
+import gsap from 'gsap';
 import { PersonaConfig, ThemeMode } from '../types';
 
 interface HeaderProps {
@@ -25,11 +26,36 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleSFX,
 }) => {
   const isDark = themeMode === 'dark';
+  const identityRef = useRef<HTMLDivElement>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const ctx = gsap.context(() => {
+      gsap.from(identityRef.current, {
+        autoAlpha: 0,
+        y: -16,
+        duration: 0.7,
+        delay: 0.15,
+        ease: 'power3.out',
+        clearProps: 'transform',
+      });
+      gsap.from(controlsRef.current, {
+        autoAlpha: 0,
+        y: -16,
+        duration: 0.7,
+        delay: 0.28,
+        stagger: 0.08,
+        ease: 'power3.out',
+        clearProps: 'transform',
+      });
+    });
+    return () => ctx.revert();
+  }, []);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-20 px-4 sm:px-6 pt-3.5 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
       {/* Left: Identity Badge & Current Persona Status */}
-      <div className="glass-panel rounded-2xl px-3.5 py-2 flex items-center gap-3 pointer-events-auto shadow-sm">
+      <div ref={identityRef} className="glass-panel rounded-2xl px-3.5 py-2 flex items-center gap-3 pointer-events-auto shadow-sm">
         <div
           id="persona-avatar-dot"
           className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shadow-inner transition-colors duration-500"
@@ -62,7 +88,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Right: Audio Controls & Theme Switch */}
-      <div className="flex items-center gap-2 pointer-events-auto flex-wrap">
+      <div ref={controlsRef} className="flex items-center gap-2 pointer-events-auto flex-wrap">
         {/* Light / Dark Mode Toggle */}
         <button
           id="btn-theme-toggle"
