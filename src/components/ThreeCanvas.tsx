@@ -26,6 +26,8 @@ interface ThreeCanvasProps {
   onHoverOrbitItem: (item: { id: OrbitModuleId; emoji: string; label: string; coords: ScreenCoord } | null) => void;
   onUpdateBadgeCoords: (coords: ScreenCoord | null) => void;
   onModelLoadedMessage?: (msg: string) => void;
+  onLoadProgress?: (progress: number, statusText: string) => void;
+  onLoadComplete?: () => void;
 }
 
 export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
@@ -39,6 +41,8 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   onHoverOrbitItem,
   onUpdateBadgeCoords,
   onModelLoadedMessage,
+  onLoadProgress,
+  onLoadComplete,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -114,6 +118,8 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     onHoverOrbitItem,
     onUpdateBadgeCoords,
     onModelLoadedMessage,
+    onLoadProgress,
+    onLoadComplete,
   });
   useEffect(() => {
     callbacksRef.current = {
@@ -121,6 +127,8 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       onHoverOrbitItem,
       onUpdateBadgeCoords,
       onModelLoadedMessage,
+      onLoadProgress,
+      onLoadComplete,
     };
   });
 
@@ -1662,8 +1670,22 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           characterPivotRef.current.add(modelScene);
           audioEngine.playSFX('dressup');
           callbacksRef.current.onModelLoadedMessage?.(`已载入：${modelDisplayName}`);
+          callbacksRef.current.onLoadProgress?.(100, `已就绪：${modelDisplayName}`);
+          setTimeout(() => {
+            callbacksRef.current.onLoadComplete?.();
+          }, 450);
         },
-        undefined,
+        (xhr) => {
+          if (xhr.lengthComputable && xhr.total > 0) {
+            const raw = Math.round((xhr.loaded / xhr.total) * 100);
+            const mapped = Math.min(98, Math.max(28, Math.round(28 + raw * 0.7)));
+            callbacksRef.current.onLoadProgress?.(mapped, `正在加载 3D 角色 (${mapped}%)...`);
+          } else if (xhr.loaded > 0) {
+            const approxTotal = 2.2 * 1024 * 1024;
+            const approx = Math.min(95, Math.max(28, Math.round(28 + (xhr.loaded / approxTotal) * 68)));
+            callbacksRef.current.onLoadProgress?.(approx, `正在传输 3D 资产数据...`);
+          }
+        },
         (err) => {
           console.warn(`Failed to load model from candidate ${index + 1}/${candidateUrls.length} (${targetUrl}):`, err);
           if (!isCancelled) {

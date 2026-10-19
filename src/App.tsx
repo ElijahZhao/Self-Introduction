@@ -19,6 +19,7 @@ import { ConfigDrawer } from './components/ConfigDrawer';
 import { FloatingWaveBadge } from './components/FloatingWaveBadge';
 import { OrbitHoverTooltip } from './components/OrbitHoverTooltip';
 import { Toast } from './components/Toast';
+import { LoadingScreen } from './components/LoadingScreen';
 
 export const App: React.FC = () => {
   // Theme Mode (Light / Dark)
@@ -93,6 +94,11 @@ export const App: React.FC = () => {
 
   // External 3D model
   const [externalModelFile, setExternalModelFile] = useState<File | null>(null);
+
+  // 3D Model Loading Progress State
+  const [loadingProgress, setLoadingProgress] = useState(15);
+  const [loadingStatusText, setLoadingStatusText] = useState('正在初始化 3D 展台与渲染引擎...');
+  const [isLoadingComplete, setIsLoadingComplete] = useState(false);
 
   // Toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -348,6 +354,13 @@ export const App: React.FC = () => {
         onHoverOrbitItem={setHoverData}
         onUpdateBadgeCoords={setBadgeCoords}
         onModelLoadedMessage={showToast}
+        onLoadProgress={(pct, text) => {
+          setLoadingProgress(pct);
+          setLoadingStatusText(text);
+        }}
+        onLoadComplete={() => {
+          setIsLoadingComplete(true);
+        }}
       />
 
       {/* Floating 3D Audio Waveform Badge */}
@@ -420,6 +433,14 @@ export const App: React.FC = () => {
         onUploadModel={handleUploadModel}
         onResetModel={handleResetModel}
         onSaveProfile={handleSaveProfile}
+      />
+
+      {/* Glassmorphism Circular 3D Asset Loading Progress Indicator */}
+      <LoadingScreen
+        progress={loadingProgress}
+        statusText={loadingStatusText}
+        themeMode={themeMode}
+        isComplete={isLoadingComplete}
       />
 
       {/* Toast Notification */}
