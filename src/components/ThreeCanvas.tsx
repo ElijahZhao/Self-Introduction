@@ -15,6 +15,23 @@ import {
 import { audioEngine } from '../services/audioEngine';
 import { createContactShadowTexture } from '../utils/faceTextureGenerator';
 
+interface ActiveShockwave {
+  group: THREE.Group;
+  primaryRing: THREE.Mesh;
+  glowRing: THREE.Mesh;
+  sparkles: THREE.Mesh[];
+  age: number;
+  duration: number;
+  maxScale: number;
+}
+
+interface ActivePunch {
+  group: THREE.Group;
+  baseScale: THREE.Vector3;
+  timer: number;
+  duration: number;
+}
+
 interface ThreeCanvasProps {
   currentPersona: PersonaConfig;
   accessories: AccessoryState;
@@ -100,6 +117,8 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   const orbitingItemsRef = useRef<THREE.Group[]>([]);
   const orbitRingsRef = useRef<THREE.Object3D[]>([]);
   const rippleRingsRef = useRef<{ mesh: THREE.Mesh; active: boolean; age: number; delay: number }[]>([]);
+  const shockwavesRef = useRef<ActiveShockwave[]>([]);
+  const punchedItemsRef = useRef<ActivePunch[]>([]);
   const dressupParticlesRef = useRef<THREE.Mesh[]>([]);
 
   // Drag-to-rotate and motion state
@@ -145,18 +164,99 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     };
   };
 
+  // Spawn high-impact translucent 3D expanding shockwave ring at world coordinates
+  const spawn3DShockwave = (worldPos: THREE.Vector3, colorHex: number = 0x38bdf8) => {
+    if (!sceneRef.current) return;
+    const group = new THREE.Group();
+    group.position.copy(worldPos);
+
+    // 1. Primary High-Definition Crisp Expanding Ring
+    const primaryGeo = new THREE.RingGeometry(0.82, 0.98, 64);
+    const primaryMat = new THREE.MeshBasicMaterial({
+      color: colorHex,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.95,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const primaryRing = new THREE.Mesh(primaryGeo, primaryMat);
+    primaryRing.rotation.x = -Math.PI / 2;
+    primaryRing.scale.set(0.12, 0.12, 0.12);
+    group.add(primaryRing);
+
+    // 2. Halo Glow Ring
+    const glowGeo = new THREE.RingGeometry(0.66, 0.86, 64);
+    const glowMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.75,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const glowRing = new THREE.Mesh(glowGeo, glowMat);
+    glowRing.rotation.x = -Math.PI / 2;
+    glowRing.scale.set(0.1, 0.1, 0.1);
+    group.add(glowRing);
+
+    // 3. High-Speed Radial Burst Sparks for punchy hit feedback
+    const sparkles: THREE.Mesh[] = [];
+    const sparkCount = 14;
+    for (let i = 0; i < sparkCount; i++) {
+      const spark = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.045, 0),
+        new THREE.MeshBasicMaterial({
+          color: colorHex,
+          transparent: true,
+          opacity: 0.95,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        })
+      );
+      const angle = (i / sparkCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.25;
+      const speed = 2.2 + Math.random() * 1.5;
+      spark.userData = {
+        vx: Math.cos(angle) * speed,
+        vz: Math.sin(angle) * speed,
+        vy: (Math.random() - 0.5) * 0.6,
+      };
+      sparkles.push(spark);
+      group.add(spark);
+    }
+
+    sceneRef.current.add(group);
+    shockwavesRef.current.push({
+      group,
+      primaryRing,
+      glowRing,
+      sparkles,
+      age: 0,
+      duration: 0.55,
+      maxScale: 1.85,
+    });
+  };
+
+  // Elastic recoil bounce for clicked 3D objects
+  const elasticPunchItem = (target: THREE.Group) => {
+    const existing = punchedItemsRef.current.find((p) => p.group === target);
+    if (existing) {
+      existing.timer = 0;
+      return;
+    }
+    punchedItemsRef.current.push({
+      group: target,
+      baseScale: target.scale.clone(),
+      timer: 0,
+      duration: 0.35,
+    });
+  };
+
   // Trigger blue 3D ripple around orbit item
   const trigger3DRippleAt = (targetGroup: THREE.Group) => {
     activeOrbitTargetRef.current = targetGroup;
-    rippleRingsRef.current.forEach((r, idx) => {
-      r.active = true;
-      r.age = -idx * 0.18;
-      r.mesh.visible = true;
-      r.mesh.position.copy(targetGroup.position);
-      r.mesh.position.y = Math.max(0.02, targetGroup.position.y - 0.08);
-      r.mesh.scale.set(0.2, 0.2, 0.2);
-      (r.mesh.material as THREE.MeshBasicMaterial).opacity = 0;
-    });
+    spawn3DShockwave(targetGroup.position, currentPersona.orbitColor || 0x38bdf8);
+    elasticPunchItem(targetGroup);
   };
 
   // Burst particles for dress-up sparkles
@@ -1208,15 +1308,53 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       updateMouseCoords(e);
       if (!cameraRef.current) return;
       raycaster.setFromCamera(mouse, cameraRef.current);
-      const colliders = orbitingItemsRef.current.map((g) => g.userData.collider);
-      const intersects = raycaster.intersectObjects(colliders, false);
+
+      const orbitColliders = orbitingItemsRef.current.map((g) => g.userData.collider);
+      const characterHitMeshes: THREE.Object3D[] = [];
+      if (characterPivotRef.current) {
+        characterPivotRef.current.traverse((c) => {
+          if ((c as THREE.Mesh).isMesh && c.visible) {
+            characterHitMeshes.push(c);
+          }
+        });
+      }
+
+      const intersects = raycaster.intersectObjects([...orbitColliders, ...characterHitMeshes], true);
 
       if (intersects.length > 0) {
-        const hitId = intersects[0].object.userData.orbitId as OrbitModuleId;
-        const itemGroup = orbitingItemsRef.current.find((g) => g.userData.id === hitId);
-        if (itemGroup) {
-          trigger3DRippleAt(itemGroup);
+        const hit = intersects[0];
+        const hitPos = hit.point;
+
+        // Check if orbit module collider was hit
+        let hitId: OrbitModuleId | null = null;
+        let itemGroup: THREE.Group | undefined;
+        let cur: THREE.Object3D | null = hit.object;
+        while (cur) {
+          if (cur.userData?.orbitId) {
+            hitId = cur.userData.orbitId as OrbitModuleId;
+            itemGroup = orbitingItemsRef.current.find((g) => g.userData.id === hitId);
+            break;
+          }
+          cur = cur.parent;
+        }
+
+        if (itemGroup && hitId) {
+          // Trigger high-impact 3D expanding shockwave ring at exact intersection point
+          const ripplePos = hitPos.clone();
+          spawn3DShockwave(ripplePos, currentPersona.orbitColor || 0x38bdf8);
+          elasticPunchItem(itemGroup);
+          audioEngine.playSFX('tap');
+          activeOrbitTargetRef.current = itemGroup;
           callbacksRef.current.onSelectOrbitItem(hitId);
+        } else if (characterPivotRef.current) {
+          // Character model or center stage tapped
+          const impactPos = hitPos ? hitPos.clone() : new THREE.Vector3(0, 0.13, 0);
+          spawn3DShockwave(impactPos, currentPersona.orbitColor || 0x38bdf8);
+          if (externalModelRef.current) {
+            elasticPunchItem(externalModelRef.current);
+          }
+          characterJumpVelocityRef.current = 0.082;
+          audioEngine.playSFX('dressup');
         }
       }
     };
@@ -1332,32 +1470,68 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         }
       });
 
-      // Ripples & Floating Badge positioning
+      // Update Expanding 3D Shockwave Rings (Translucent & Dissipating at Exact Hit Coordinate)
+      for (let i = shockwavesRef.current.length - 1; i >= 0; i--) {
+        const sw = shockwavesRef.current[i];
+        sw.age += delta / sw.duration;
+        if (sw.age >= 1.0) {
+          scene.remove(sw.group);
+          sw.primaryRing.geometry.dispose();
+          (sw.primaryRing.material as THREE.Material).dispose();
+          sw.glowRing.geometry.dispose();
+          (sw.glowRing.material as THREE.Material).dispose();
+          sw.sparkles.forEach((s) => {
+            s.geometry.dispose();
+            (s.material as THREE.Material).dispose();
+          });
+          shockwavesRef.current.splice(i, 1);
+          continue;
+        }
+
+        // Fast ease-out cubic for punchy impact
+        const t = sw.age;
+        const ease = 1 - Math.pow(1 - t, 3);
+        const currentScale = 0.15 + ease * sw.maxScale;
+        sw.primaryRing.scale.set(currentScale, currentScale, currentScale);
+        sw.glowRing.scale.set(currentScale * 0.88, currentScale * 0.88, currentScale * 0.88);
+
+        const fade = Math.max(0, 1 - t);
+        (sw.primaryRing.material as THREE.MeshBasicMaterial).opacity = fade * 0.92;
+        (sw.glowRing.material as THREE.MeshBasicMaterial).opacity = fade * 0.68;
+
+        sw.sparkles.forEach((spark) => {
+          spark.position.x += spark.userData.vx * delta;
+          spark.position.z += spark.userData.vz * delta;
+          spark.position.y += spark.userData.vy * delta;
+          spark.rotation.x += 0.18;
+          spark.rotation.y += 0.18;
+          (spark.material as THREE.MeshBasicMaterial).opacity = fade * 0.95;
+          spark.scale.setScalar(Math.max(0.08, fade));
+        });
+      }
+
+      // Update Elastic Item Punches (Hit Impact Bounce)
+      for (let i = punchedItemsRef.current.length - 1; i >= 0; i--) {
+        const p = punchedItemsRef.current[i];
+        p.timer += delta;
+        if (p.timer >= p.duration) {
+          p.group.scale.copy(p.baseScale);
+          punchedItemsRef.current.splice(i, 1);
+        } else {
+          const t = p.timer / p.duration;
+          // Spring overshoot oscillation
+          const bounce = Math.sin(t * Math.PI * 2.5) * Math.exp(-t * 5.5) * 0.22;
+          const factor = 1 + bounce;
+          p.group.scale.set(p.baseScale.x * factor, p.baseScale.y * factor, p.baseScale.z * factor);
+        }
+      }
+
+      // Floating Badge positioning
       if (activeOrbitTargetRef.current) {
         const screenPos = toScreenPosition(activeOrbitTargetRef.current.position);
         callbacksRef.current.onUpdateBadgeCoords(screenPos);
-
-        rippleRingsRef.current.forEach((r) => {
-          if (!r.active) return;
-          r.age += delta * 0.95;
-          if (!activeOrbitTargetRef.current) return;
-          r.mesh.position.x = activeOrbitTargetRef.current.position.x;
-          r.mesh.position.z = activeOrbitTargetRef.current.position.z;
-          if (r.age < 0) {
-            (r.mesh.material as THREE.MeshBasicMaterial).opacity = 0;
-            return;
-          }
-          const progress = r.age % 1.0;
-          const scale = 0.35 + progress * 3.4;
-          r.mesh.scale.set(scale, scale, scale);
-          (r.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, (1 - progress) * 0.68);
-        });
       } else {
         callbacksRef.current.onUpdateBadgeCoords(null);
-        rippleRingsRef.current.forEach((r) => {
-          r.active = false;
-          r.mesh.visible = false;
-        });
       }
 
       // Dressup Particles
