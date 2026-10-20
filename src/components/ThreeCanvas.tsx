@@ -1475,7 +1475,10 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       // Wandering pet AI (Shiba Inu + Fox): idle → wander → interact with nearest orbit item
       for (const pet of petsRef.current) {
         const pg = pet.group;
-        pet.mixer.update(delta);
+        // Skeletal animation paused on real GPUs (bind-pose matrix divergence
+        // fragments the mesh); pets keep their Idle first-frame pose and still
+        // move across the floor. Re-enable once the animation path is fixed.
+        // pet.mixer.update(delta);
         const petPos = pg.position;
         const pickAnim = (prefs: string[]) => {
           for (const p of prefs) {
