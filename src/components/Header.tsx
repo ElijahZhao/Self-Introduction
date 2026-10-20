@@ -9,9 +9,13 @@ interface HeaderProps {
   bgmPlaying: boolean;
   bgmInitialized: boolean;
   sfxEnabled: boolean;
+  cursorEnabled: boolean;
+  cursorStyle: 'rainbow' | 'star';
   onToggleTheme: () => void;
   onToggleBGM: () => void;
   onToggleSFX: () => void;
+  onToggleCursor: () => void;
+  onCycleCursorStyle: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -21,9 +25,13 @@ export const Header: React.FC<HeaderProps> = ({
   bgmPlaying,
   bgmInitialized,
   sfxEnabled,
+  cursorEnabled,
+  cursorStyle,
   onToggleTheme,
   onToggleBGM,
   onToggleSFX,
+  onToggleCursor,
+  onCycleCursorStyle,
 }) => {
   const isDark = themeMode === 'dark';
   const identityRef = useRef<HTMLDivElement>(null);
@@ -130,6 +138,34 @@ export const Header: React.FC<HeaderProps> = ({
           <span id="sfx-icon">{sfxEnabled ? '🔔' : '🔕'}</span>
           <span id="sfx-label" className="hidden sm:inline">
             {sfxEnabled ? 'UI 音效: 开' : 'UI 音效: 关'}
+          </span>
+        </button>
+
+        {/* Fluid Cursor Toggle */}
+        <button
+          id="btn-cursor-toggle"
+          type="button"
+          onClick={onToggleCursor}
+          className="glass-pill px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:text-slate-900 transition flex items-center gap-1.5 cursor-pointer"
+          title={cursorEnabled ? '关闭流体光标' : '开启流体光标'}
+        >
+          <span id="cursor-icon">{cursorEnabled ? '💫' : '🚫'}</span>
+          <span id="cursor-label" className="hidden sm:inline">
+            光标: {cursorEnabled ? '开' : '关'}
+          </span>
+        </button>
+
+        {/* Fluid Cursor Style Cycle */}
+        <button
+          id="btn-cursor-style"
+          type="button"
+          onClick={onCycleCursorStyle}
+          className="glass-pill px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:text-slate-900 transition flex items-center gap-1.5 cursor-pointer"
+          title={cursorStyle === 'rainbow' ? '切换为星夜流光光标' : '切换为彩虹流体光标'}
+        >
+          <span id="cursor-style-icon">{cursorStyle === 'rainbow' ? '🌈' : '🌌'}</span>
+          <span id="cursor-style-label" className="hidden sm:inline">
+            {cursorStyle === 'rainbow' ? '彩虹' : '星夜'}
           </span>
         </button>
       </div>

@@ -33,6 +33,22 @@ export const App: React.FC = () => {
     return 'light';
   });
 
+  // Fluid Cursor: enabled + style (rainbow / star-sky)
+  const [cursorEnabled, setCursorEnabled] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('avatar_portfolio_cursor_enabled');
+      if (saved === '0') return false;
+    } catch (e) {}
+    return true;
+  });
+  const [cursorStyle, setCursorStyle] = useState<'rainbow' | 'star'>(() => {
+    try {
+      const saved = localStorage.getItem('avatar_portfolio_cursor_style');
+      if (saved === 'rainbow' || saved === 'star') return saved;
+    } catch (e) {}
+    return 'rainbow';
+  });
+
   // Profile Configuration
   const [profileConfig] = useState<ProfileConfig>(INITIAL_PROFILE_CONFIG);
 
@@ -162,6 +178,26 @@ export const App: React.FC = () => {
     setSfxEnabled(nextState);
   };
 
+  const handleToggleCursor = () => {
+    const next = !cursorEnabled;
+    setCursorEnabled(next);
+    try {
+      localStorage.setItem('avatar_portfolio_cursor_enabled', next ? '1' : '0');
+    } catch (e) {}
+    audioEngine.playSFX('tap');
+    showToast(next ? '流体光标已开启 ✨' : '流体光标已关闭');
+  };
+
+  const handleCycleCursorStyle = () => {
+    const next: 'rainbow' | 'star' = cursorStyle === 'rainbow' ? 'star' : 'rainbow';
+    setCursorStyle(next);
+    try {
+      localStorage.setItem('avatar_portfolio_cursor_style', next);
+    } catch (e) {}
+    audioEngine.playSFX('tap');
+    showToast(next === 'rainbow' ? '光标样式：彩虹流体 🌈' : '光标样式：星夜流光 ✨');
+  };
+
   const handleSelectModel = (id: BuiltinModelId) => {
     if (id === activeModelId) return;
     audioEngine.playSFX('dressup');
@@ -266,21 +302,28 @@ export const App: React.FC = () => {
         />
       </div>
 
-      {/* Fullscreen splash cursor fluid effect */}
-      <SplashCursor
-        rainbow
-        colorSpeed={0.9}
-        intensity={0.7}
-        size={0.9}
-        swirl={2.4}
-        trail={0.8}
-        momentum={0.8}
-        shading={0.9}
-        quality="medium"
-        clickSplash
-        theme={themeMode === 'dark' ? 'dark' : 'light'}
-        zIndex={40}
-      />
+      {/* Fullscreen splash cursor fluid effect (toggleable, rainbow / star-sky styles) */}
+      {cursorEnabled && (
+        <SplashCursor
+          colors={
+            cursorStyle === 'star'
+              ? ['#7dd3fc', '#a78bfa', '#f0f9ff', '#67e8f9']
+              : ['#4f8cff', '#2dd4bf', '#ffd166']
+          }
+          rainbow={cursorStyle === 'rainbow'}
+          colorSpeed={cursorStyle === 'star' ? 0.35 : 0.9}
+          intensity={cursorStyle === 'star' ? 0.5 : 0.7}
+          size={cursorStyle === 'star' ? 0.8 : 0.9}
+          swirl={2.4}
+          trail={cursorStyle === 'star' ? 1.2 : 0.8}
+          momentum={0.8}
+          shading={0.9}
+          quality="medium"
+          clickSplash
+          theme={themeMode === 'dark' ? 'dark' : 'light'}
+          zIndex={40}
+        />
+      )}
 
       {/* 3D WebGL Canvas */}
       <ThreeCanvas
@@ -316,9 +359,13 @@ export const App: React.FC = () => {
         bgmPlaying={bgmPlaying}
         bgmInitialized={bgmInitialized}
         sfxEnabled={sfxEnabled}
+        cursorEnabled={cursorEnabled}
+        cursorStyle={cursorStyle}
         onToggleTheme={handleToggleTheme}
         onToggleBGM={handleToggleBGM}
         onToggleSFX={handleToggleSFX}
+        onToggleCursor={handleToggleCursor}
+        onCycleCursorStyle={handleCycleCursorStyle}
       />
 
       {/* Center Frosted-Glass Info Modal */}

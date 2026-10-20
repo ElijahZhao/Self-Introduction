@@ -516,13 +516,18 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     orbitingItemsRef.current = [];
 
     const registerItem = (group: THREE.Group, meta: any) => {
-      const collider = new THREE.Mesh(
-        new THREE.SphereGeometry(0.5, 16, 16),
-        new THREE.MeshBasicMaterial({ visible: false })
-      );
-      collider.userData = { orbitId: meta.id };
-      group.add(collider);
-      group.userData = { ...meta, collider };
+      const isDecorative = !meta.id;
+      if (!isDecorative) {
+        const collider = new THREE.Mesh(
+          new THREE.SphereGeometry(0.5, 16, 16),
+          new THREE.MeshBasicMaterial({ visible: false })
+        );
+        collider.userData = { orbitId: meta.id };
+        group.add(collider);
+        group.userData = { ...meta, collider };
+      } else {
+        group.userData = { ...meta };
+      }
       scene.add(group);
       orbitingItemsRef.current.push(group);
     };
@@ -532,7 +537,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     // -------------------------------------------------------------------------
     const gltfOrbitLoader = new GLTFLoader();
     const orbitDracoLoader = new DRACOLoader();
-    orbitDracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
+    orbitDracoLoader.setDecoderPath('draco/');
     gltfOrbitLoader.setDRACOLoader(orbitDracoLoader);
 
     // 1. 🪐 Saturn (SolarSystemLowPoly GitHub)
@@ -753,6 +758,82 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       angle: 2.2,
       speed: 0.16,
       baseY: 0.35,
+    });
+
+    // -------------------------------------------------------------------------
+    // Decorative Orbiting Orbs (no interaction) — Quaternius Ultimate Space Kit
+    // (CC0-1.0, https://quaternius.com/packs/ultimatespacekit.html)
+    // -------------------------------------------------------------------------
+    const loadDecorativeOrb = (
+      group: THREE.Group,
+      fileName: string,
+      scale: number,
+      tiltDeg = 0
+    ) => {
+      const urls = getModelCandidateUrls(`models/${fileName}`);
+      const load = (idx = 0) => {
+        if (idx >= urls.length) return;
+        gltfOrbitLoader.load(
+          urls[idx],
+          (gltf) => {
+            const s = gltf.scene;
+            const b = new THREE.Box3().setFromObject(s);
+            const size = b.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z) || 1;
+            s.scale.setScalar(scale / maxDim);
+            if (tiltDeg) s.rotation.z = THREE.MathUtils.degToRad(tiltDeg);
+            s.traverse((child) => {
+              if ((child as THREE.Mesh).isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+              }
+            });
+            group.add(s);
+          },
+          undefined,
+          () => load(idx + 1)
+        );
+      };
+      load();
+    };
+
+    // Tiny planet (outer-most orbit)
+    const tinyPlanetGroup = new THREE.Group();
+    loadDecorativeOrb(tinyPlanetGroup, 'orb-planet_5-transformed.glb', 0.4);
+    registerItem(tinyPlanetGroup, {
+      emoji: '🪨',
+      label: '小行星',
+      radius: 6.1,
+      angle: 0.7,
+      speed: 0.12,
+      baseY: 0.1,
+      orientToTangent: true,
+    });
+
+    // Spaceship (outer orbit, tilted flight pose)
+    const spaceshipGroup = new THREE.Group();
+    loadDecorativeOrb(spaceshipGroup, 'orb-spaceship_finnthefrog-transformed.glb', 0.5, 18);
+    registerItem(spaceshipGroup, {
+      emoji: '🚀',
+      label: '小飞船',
+      radius: 5.55,
+      angle: 3.4,
+      speed: 0.16,
+      baseY: 0.55,
+      orientToTangent: true,
+    });
+
+    // Lunar rover (mid-outer orbit, low altitude)
+    const roverGroup = new THREE.Group();
+    loadDecorativeOrb(roverGroup, 'orb-rover_1-transformed.glb', 0.42);
+    registerItem(roverGroup, {
+      emoji: '🛰️',
+      label: '月球车',
+      radius: 4.9,
+      angle: 5.1,
+      speed: 0.19,
+      baseY: -0.05,
+      orientToTangent: true,
     });
 
     // -------------------------------------------------------------------------
