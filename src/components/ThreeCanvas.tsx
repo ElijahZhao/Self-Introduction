@@ -795,6 +795,77 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       orientToTangent: true,
     });
 
+    // -------------------------------------------------------------------------
+    // Scene decorations (Kenney Space Kit, CC0-1.0, static GLBs, no textures —
+    // mesh vertex colors only, so rendering is deterministic across GPUs).
+    // All are pure decorations (no id → not interactive, no collider).
+    // -------------------------------------------------------------------------
+
+    // Craft Speeder A — hovering sci-fi speeder (2 m wide source)
+    const decorSpeederGroup = new THREE.Group();
+    loadDecorativeOrb(decorSpeederGroup, 'decor-speeder.glb', 0.55);
+    registerItem(decorSpeederGroup, {
+      emoji: '🏎️',
+      label: '悬浮快艇',
+      radius: 5.25,
+      angle: 2.35,
+      speed: 0.17,
+      baseY: 0.5,
+      orientToTangent: true,
+    });
+
+    // Satellite Dish Detailed — comms dish on the outer ring
+    const decorDishGroup = new THREE.Group();
+    loadDecorativeOrb(decorDishGroup, 'decor-satellite-dish.glb', 0.5);
+    registerItem(decorDishGroup, {
+      emoji: '📡',
+      label: '卫星天线',
+      radius: 6.35,
+      angle: 0.15,
+      speed: 0.11,
+      baseY: 0.12,
+      orientToTangent: true,
+    });
+
+    // Astronaut A — standing space explorer near the stage floor
+    const decorAstronautGroup = new THREE.Group();
+    loadDecorativeOrb(decorAstronautGroup, 'decor-astronaut.glb', 0.9);
+    registerItem(decorAstronautGroup, {
+      emoji: '🧑‍🚀',
+      label: '宇航员',
+      radius: 4.72,
+      angle: 4.75,
+      speed: 0.21,
+      baseY: -0.05,
+      orientToTangent: true,
+    });
+
+    // Craft Miner — cargo mining ship cruising the outer orbit
+    const decorMinerGroup = new THREE.Group();
+    loadDecorativeOrb(decorMinerGroup, 'decor-miner.glb', 0.5);
+    registerItem(decorMinerGroup, {
+      emoji: '⛏️',
+      label: '采矿船',
+      radius: 5.7,
+      angle: 5.85,
+      speed: 0.15,
+      baseY: 0.55,
+      orientToTangent: true,
+    });
+
+    // Meteor Detailed — rocky meteorite on the outermost ring
+    const decorMeteorGroup = new THREE.Group();
+    loadDecorativeOrb(decorMeteorGroup, 'decor-meteor.glb', 0.45);
+    registerItem(decorMeteorGroup, {
+      emoji: '☄️',
+      label: '陨石',
+      radius: 6.55,
+      angle: 3.05,
+      speed: 0.1,
+      baseY: 0.35,
+      orientToTangent: true,
+    });
+
     const glowSphereGroup = new THREE.Group();
     loadDecorativeOrb(glowSphereGroup, 'orb-pickup_sphere-transformed.glb', 0.55);
     registerItem(glowSphereGroup, {
