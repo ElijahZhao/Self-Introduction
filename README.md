@@ -11,7 +11,7 @@
    - **🪐 土星（关于我）**、**✈️ 折纸飞机（作品与经历）**、**🎧 地月（联络交流）**、**🔮 能量球（技能图谱）** 沿轨道环绕运行，点击触发声波涟漪弹窗。
    - **纯装饰环绕物**（不参与交互）：🪨 小行星、🚀 小飞船、🛰️ 月球车、🚙 探索车，沿外层轨道点缀，来源 [Quaternius Ultimate Space Kit](https://quaternius.com/packs/ultimatespacekit.html)（CC0-1.0）。
    - **🐕 走动小宠物（柴犬 + 狐狸）**：在展台地面自由漫步，会走向并"打量"靠近的环绕物，来源 [Quaternius Ultimate Animated Animal Pack](https://quaternius.com/packs/ultimateanimatedanimals.html)（CC0-1.0）。
-   - **🛸 无人机列阵欢迎文字**：场景前方悬浮"欢迎来访者"粒子文字（Canvas 像素采样生成），缓慢浮动呼吸。
+   - **🛸 无人机列阵欢迎文字**：场景前方悬浮"欢迎来访者"粒子文字（Canvas 像素采样生成），缓慢浮动呼吸；**悬停时粒子放大，点击触发粒子绽放 + 欢迎语播报**。
 3. **三层声音交互系统**
    - **全局治愈 BGM**：基于 [Tone.js](https://github.com/Tonejs/Tone.js) 实时合成轻柔钢琴/八音盒旋律。
    - **清脆游戏 UI 音效**：悬停、点击水滴声波、弹窗开合音效。

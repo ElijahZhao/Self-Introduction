@@ -32,7 +32,7 @@ export const PortfolioDock: React.FC<PortfolioDockProps> = ({
       <div className="glass-pill px-3 py-1 rounded-full text-[11px] flex items-center gap-1.5 shadow-xs pointer-events-auto transition-opacity opacity-90 hover:opacity-100">
         <span className="text-sky-500 animate-pulse">●</span>
         <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>
-          拖拽环绕视角 · 点击环绕的土星、狐狸与纸飞机打开介绍 · 底部右侧切换主角
+          拖拽环绕视角 · 点击环绕的土星、纸飞机、能量球与地月打开介绍 · 底部右侧切换主角
         </span>
       </div>
 

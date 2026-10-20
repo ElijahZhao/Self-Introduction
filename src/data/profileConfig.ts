@@ -16,7 +16,7 @@ export const INITIAL_PROFILE_CONFIG: ProfileConfig = {
       bgOuter: '#e8edf5',
       bgInnerDark: '#0e1628',
       bgOuterDark: '#060a12',
-      desc: '3D 互动个人展台 · 点击或悬停环绕的土星、狐狸与纸飞机，探索我的个人主页',
+      desc: '3D 互动个人展台 · 点击或悬停环绕的土星、纸飞机、能量球与地月，探索我的个人主页',
       outfit: {
         topColor: 0x2b3a4a,
         collarColor: 0x3b82f6,

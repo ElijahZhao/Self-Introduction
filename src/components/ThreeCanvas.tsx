@@ -76,6 +76,7 @@ interface ThreeCanvasProps {
   onModelLoadedMessage?: (msg: string) => void;
   onLoadProgress?: (progress: number, statusText: string) => void;
   onLoadComplete?: () => void;
+  onWelcomeInteract?: () => void;
 }
 
 export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
@@ -90,6 +91,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   onModelLoadedMessage,
   onLoadProgress,
   onLoadComplete,
+  onWelcomeInteract,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -118,6 +120,8 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   // Drone-swarm welcome text (points sampled from canvas-rendered text)
   const textPointsRef = useRef<THREE.Points | null>(null);
   const textGroupRef = useRef<THREE.Group | null>(null);
+  const textHoverRef = useRef(false);
+  const textColliderRef = useRef<THREE.Mesh | null>(null);
 
   // Lights & Materials for theme adaptation
   const lightsRef = useRef<{
@@ -167,6 +171,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     onModelLoadedMessage,
     onLoadProgress,
     onLoadComplete,
+    onWelcomeInteract,
   });
   useEffect(() => {
     callbacksRef.current = {
@@ -176,6 +181,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       onModelLoadedMessage,
       onLoadProgress,
       onLoadComplete,
+      onWelcomeInteract,
     };
   });
 
@@ -668,52 +674,76 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
     // 3. 🦊 Little Fox — now a free-roaming pet (Quaternius Ultimate Animated Animal Pack, CC0)
     // Replaces the former orbit item; interactivity for 技能图谱 moved to the glow sphere.
+    // Dedicated plain loader for pets (uncompressed skinned GLBs, no Draco).
+    const petLoader = new GLTFLoader();
+    const petContactShadowTexture = createContactShadowTexture();
     const foxPetGroup = new THREE.Group();
     const foxPetUrls = getModelCandidateUrls('models/orb-fox.glb');
     const loadFoxPet = (idx = 0) => {
       if (idx >= foxPetUrls.length) return;
-      gltfOrbitLoader.load(
+      petLoader.load(
         foxPetUrls[idx],
         (gltf) => {
-          const fs = gltf.scene;
-          const b = new THREE.Box3().setFromObject(fs);
-          const size = b.getSize(new THREE.Vector3());
-          const maxDim = Math.max(size.x, size.y, size.z) || 1;
-          fs.scale.setScalar(0.8 / maxDim);
-          const b2 = new THREE.Box3().setFromObject(fs);
-          fs.position.y = -b2.min.y; // ground to y=0
-          fs.traverse((child) => {
-            if ((child as THREE.Mesh).isMesh) {
-              child.castShadow = true;
-              child.receiveShadow = true;
-            }
-          });
-          foxPetGroup.add(fs);
-          const mixer = new THREE.AnimationMixer(fs);
-          const actions: { [key: string]: THREE.AnimationAction } = {};
-          gltf.animations.forEach((clip) => {
-            const name = clip.name.split('|').pop() || clip.name;
-            actions[name] = mixer.clipAction(clip);
-          });
-          const idle = actions['Idle'] || actions['Idle_2'];
-          if (idle) idle.play();
-          petsRef.current.push({
-            group: foxPetGroup,
-            mixer,
-            actions,
-            state: 'idle',
-            target: new THREE.Vector3(-2.6, 0, 2.0),
-            timer: 0.8,
-            interactTarget: null,
-          });
+          try {
+            const fs = gltf.scene;
+            const b = new THREE.Box3().setFromObject(fs);
+            const size = b.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z) || 1;
+            fs.scale.setScalar(0.8 / maxDim);
+            const b2 = new THREE.Box3().setFromObject(fs);
+            fs.position.y = -b2.min.y; // ground to y=0
+            fs.traverse((child) => {
+              if ((child as THREE.Mesh).isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+              }
+            });
+            foxPetGroup.add(fs);
+            const mixer = new THREE.AnimationMixer(fs);
+            const actions: { [key: string]: THREE.AnimationAction } = {};
+            gltf.animations.forEach((clip) => {
+              const name = clip.name.split('|').pop() || clip.name;
+              actions[name] = mixer.clipAction(clip);
+            });
+            const idle = actions['Idle'] || actions['Idle_2'];
+            if (idle) idle.play();
+            petsRef.current.push({
+              group: foxPetGroup,
+              mixer,
+              actions,
+              state: 'idle',
+              target: new THREE.Vector3(-2.6, 0, 2.0),
+              timer: 0.8,
+              interactTarget: null,
+            });
+          } catch (e) {
+            console.warn('[pet] fox load handler error:', e);
+          }
         },
         undefined,
-        () => loadFoxPet(idx + 1)
+        (err) => {
+          console.warn('[pet] fox fetch failed', idx, (err as Error)?.message);
+          loadFoxPet(idx + 1);
+        }
       );
     };
     loadFoxPet();
     foxPetGroup.position.set(-2.6, 0, 2.0);
     scene.add(foxPetGroup);
+
+    // Visible contact-shadow disc for the fox
+    const foxShadowDisc = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.46, 0.46),
+      new THREE.MeshBasicMaterial({
+        map: petContactShadowTexture,
+        transparent: true,
+        opacity: 0.55,
+        depthWrite: false,
+      })
+    );
+    foxShadowDisc.rotation.x = -Math.PI / 2;
+    foxShadowDisc.position.y = 0.005;
+    foxPetGroup.add(foxShadowDisc);
 
     // 4. 🎧 Celestial Orbit Node / Earth-Moon (SolarSystemLowPoly GitHub)
     const contactGroup = new THREE.Group();
@@ -869,51 +899,72 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     const petUrls = getModelCandidateUrls('models/orb-shiba.glb');
     const loadPet = (idx = 0) => {
       if (idx >= petUrls.length) return;
-      gltfOrbitLoader.load(
+      petLoader.load(
         petUrls[idx],
         (gltf) => {
-          const s = gltf.scene;
-          const b = new THREE.Box3().setFromObject(s);
-          const size = b.getSize(new THREE.Vector3());
-          const maxDim = Math.max(size.x, size.y, size.z) || 1;
-          s.scale.setScalar(0.85 / maxDim);
-          const b2 = new THREE.Box3().setFromObject(s);
-          s.position.y = -b2.min.y; // ground to y=0 regardless of source origin
-          s.traverse((child) => {
-            if ((child as THREE.Mesh).isMesh) {
-              child.castShadow = true;
-              child.receiveShadow = true;
-            }
-          });
-          petGroup.add(s);
+          try {
+            const s = gltf.scene;
+            const b = new THREE.Box3().setFromObject(s);
+            const size = b.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z) || 1;
+            s.scale.setScalar(0.85 / maxDim);
+            const b2 = new THREE.Box3().setFromObject(s);
+            s.position.y = -b2.min.y; // ground to y=0 regardless of source origin
+            s.traverse((child) => {
+              if ((child as THREE.Mesh).isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+              }
+            });
+            petGroup.add(s);
 
-          const mixer = new THREE.AnimationMixer(s);
-          const actions: { [key: string]: THREE.AnimationAction } = {};
-          gltf.animations.forEach((clip) => {
-            const name = clip.name.split('|').pop() || clip.name;
-            actions[name] = mixer.clipAction(clip);
-          });
-          const pick = (prefs: string[]) =>
-            prefs.map((p) => actions[p]).find((a) => !!a) || null;
-          const idle = pick(['Idle', 'Idle_2']);
-          if (idle) idle.play();
-          petsRef.current.push({
-            group: petGroup,
-            mixer,
-            actions,
-            state: 'idle',
-            target: new THREE.Vector3(2.6, 0, 1.8),
-            timer: 1.2,
-            interactTarget: null,
-          });
+            const mixer = new THREE.AnimationMixer(s);
+            const actions: { [key: string]: THREE.AnimationAction } = {};
+            gltf.animations.forEach((clip) => {
+              const name = clip.name.split('|').pop() || clip.name;
+              actions[name] = mixer.clipAction(clip);
+            });
+            const pick = (prefs: string[]) =>
+              prefs.map((p) => actions[p]).find((a) => !!a) || null;
+            const idle = pick(['Idle', 'Idle_2']);
+            if (idle) idle.play();
+            petsRef.current.push({
+              group: petGroup,
+              mixer,
+              actions,
+              state: 'idle',
+              target: new THREE.Vector3(2.6, 0, 1.8),
+              timer: 1.2,
+              interactTarget: null,
+            });
+          } catch (e) {
+            console.warn('[pet] shiba load handler error:', e);
+          }
         },
         undefined,
-        () => loadPet(idx + 1)
+        (err) => {
+          console.warn('[pet] shiba fetch failed', idx, (err as Error)?.message);
+          loadPet(idx + 1);
+        }
       );
     };
     loadPet();
     petGroup.position.set(2.6, 0, 1.8);
     scene.add(petGroup);
+
+    // Visible contact-shadow disc so the pet's location is always perceivable
+    const petShadowDisc = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.5, 0.5),
+      new THREE.MeshBasicMaterial({
+        map: petContactShadowTexture,
+        transparent: true,
+        opacity: 0.55,
+        depthWrite: false,
+      })
+    );
+    petShadowDisc.rotation.x = -Math.PI / 2;
+    petShadowDisc.position.y = 0.005;
+    petGroup.add(petShadowDisc);
 
     // -------------------------------------------------------------------------
     // Drone-Swarm Welcome Text ("欢迎来访者" as a particle constellation)
@@ -962,6 +1013,16 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         scene.add(textGroup);
         textPointsRef.current = pts;
         textGroupRef.current = textGroup;
+
+        // Invisible collider for hover/click interaction on the welcome text
+        const textCollider = new THREE.Mesh(
+          new THREE.SphereGeometry(1.35, 12, 12),
+          new THREE.MeshBasicMaterial({ visible: false })
+        );
+        textCollider.userData = { isWelcomeText: true };
+        textCollider.scale.set(2.6, 0.9, 1.2);
+        textGroup.add(textCollider);
+        textColliderRef.current = textCollider;
       }
     } catch (e) {
       console.warn('Drone text generation failed:', e);
@@ -1058,6 +1119,22 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
       if (!cameraRef.current) return;
       raycaster.setFromCamera(mouse, cameraRef.current);
+
+      // Welcome-text hover (drone constellation)
+      if (textColliderRef.current) {
+        const textHits = raycaster.intersectObject(textColliderRef.current, false);
+        if (textHits.length > 0) {
+          if (!textHoverRef.current) {
+            textHoverRef.current = true;
+            audioEngine.playSFX('hover');
+          }
+          document.body.style.cursor = 'pointer';
+          callbacksRef.current.onHoverOrbitItem(null);
+          return;
+        }
+      }
+      textHoverRef.current = false;
+
       const colliders = orbitingItemsRef.current
         .map((g) => g.userData.collider)
         .filter((c): c is THREE.Object3D => !!c);
@@ -1099,6 +1176,18 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       updateMouseCoords(e);
       if (!cameraRef.current) return;
       raycaster.setFromCamera(mouse, cameraRef.current);
+
+      // Welcome-text tap: particle burst + shockwave + welcome callback
+      if (textColliderRef.current) {
+        const textHits = raycaster.intersectObject(textColliderRef.current, false);
+        if (textHits.length > 0) {
+          const hitP = textHits[0].point.clone();
+          spawn3DShockwave(hitP, 0x4da6ff);
+          audioEngine.playSFX('tap');
+          callbacksRef.current.onWelcomeInteract?.();
+          return;
+        }
+      }
 
       const orbitColliders = orbitingItemsRef.current
         .map((g) => g.userData.collider)
@@ -1400,6 +1489,9 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         tg.rotation.y = Math.sin(elapsed * 0.22) * 0.18;
         const tm = textPointsRef.current.material as THREE.PointsMaterial;
         tm.opacity = 0.75 + Math.sin(elapsed * 0.9) * 0.2;
+        // Hover: swell the constellation for an interactive feel
+        const targetSize = textHoverRef.current ? 0.105 : 0.07;
+        tm.size += (targetSize - tm.size) * Math.min(1, delta * 8);
       }
 
       // Update Expanding 3D Shockwave Rings (Translucent & Dissipating at Exact Hit Coordinate)

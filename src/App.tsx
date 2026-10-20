@@ -279,6 +279,12 @@ export const App: React.FC = () => {
     handleSelectOrbitItem(nextId);
   };
 
+  const handleWelcomeInteract = () => {
+    audioEngine.playSFX('ripple');
+    showToast('欢迎来访者，很高兴见到你！');
+    audioEngine.playVoiceIntro('欢迎来访者，很高兴见到你！');
+  };
+
   return (
     <div className="relative w-full h-full select-none overflow-hidden">
       {/* Animated aurora backdrop behind the 3D stage */}
@@ -335,10 +341,10 @@ export const App: React.FC = () => {
         onSelectOrbitItem={handleSelectOrbitItem}
         onHoverOrbitItem={setHoverData}
         onUpdateBadgeCoords={setBadgeCoords}
+        onWelcomeInteract={handleWelcomeInteract}
         onModelLoadedMessage={showToast}
         onLoadProgress={(pct, text) => {
-          setLoadingProgress(pct);
-          setLoadingStatusText(text);
+          setLoadingProgress(pct);          setLoadingStatusText(text);
         }}
         onLoadComplete={() => {
           setIsLoadingComplete(true);
