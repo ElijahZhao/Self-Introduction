@@ -64,56 +64,6 @@ const boostTextureSaturation = (tex: THREE.Texture | null, factor: number): THRE
   }
 };
 
-// Compute the world-space bounding box of a skinned scene by manually skinning
-// its vertices (same math as the shader: bindMatrixInverse * boneWorld * boneInverse * bindMatrix).
-// Plain Box3.setFromObject only sees bind-pose geometry (which for these
-// Quaternius pets is collapsed near the origin), so it cannot measure the real size.
-const computeSkinnedBox3 = (root: THREE.Object3D): THREE.Box3 => {
-  const box = new THREE.Box3();
-  const v = new THREE.Vector3();
-  const v4 = new THREE.Vector4();
-  const skinVertex = new THREE.Vector4();
-  const skinned = new THREE.Vector4();
-  const boneMatrix = new THREE.Matrix4();
-  const tmpParent = new THREE.Matrix4();
-  root.updateMatrixWorld(true);
-  let meshCount = 0;
-  let vertCount = 0;
-  let weightSum = 0;
-  root.traverse((o) => {
-    if (!(o as THREE.SkinnedMesh).isSkinnedMesh) return;
-    const sk = o as THREE.SkinnedMesh;
-    meshCount++;
-    const pos = sk.geometry.getAttribute('position');
-    const idx = sk.geometry.getAttribute('skinIndex');
-    const wt = sk.geometry.getAttribute('skinWeight');
-    if (!pos || !idx || !wt) return;
-    const bindMatrix = sk.bindMatrix;
-    const boneInverses = sk.skeleton.boneInverses;
-    const idxArr = idx.array as ArrayLike<number>;
-    const wtArr = wt.array as ArrayLike<number>;
-    o.parent?.updateWorldMatrix(true, false);
-    tmpParent.copy(o.parent ? o.parent.matrixWorld : new THREE.Matrix4());
-    for (let vi = 0; vi < pos.count; vi++) {
-      skinVertex.set(pos.getX(vi), pos.getY(vi), pos.getZ(vi), 1).applyMatrix4(bindMatrix);
-      skinned.set(0, 0, 0, 0);
-      for (let b = 0; b < 4; b++) {
-        const bi = Math.floor(idxArr[vi * 4 + b]);
-        const w = wtArr[vi * 4 + b];
-        weightSum += w;
-        if (!(w > 0)) continue;
-        const bone = sk.skeleton.bones[bi];
-        if (!bone) continue;
-        boneMatrix.copy(bone.matrixWorld).multiply(boneInverses[bi]);
-        skinned.addScaledVector(v4.copy(skinVertex).applyMatrix4(boneMatrix), w);
-      }
-      v4.copy(skinned).applyMatrix4(sk.bindMatrixInverse);
-      box.expandByPoint(v.set(v4.x, v4.y, v4.z).applyMatrix4(tmpParent));
-      vertCount++;
-    }
-  });
-  return box;
-};
 
 interface ThreeCanvasProps {
   currentPersona: PersonaConfig;
@@ -156,16 +106,17 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
   const currentActionsRef = useRef<{ [key: string]: THREE.AnimationAction }>({});
   const activeOrbitTargetRef = useRef<THREE.Group | null>(null);
-  // Wandering pets (Shiba Inu + Fox, Quaternius CC0) — free-roam with orbit interaction
+  // Wandering pets (static low-poly pets, Kenney Cube Pets CC0) — free-roam with orbit interaction
   const petsRef = useRef<
     Array<{
       group: THREE.Group;
-      mixer: THREE.AnimationMixer;
+      mixer: THREE.AnimationMixer | null;
       actions: { [key: string]: THREE.AnimationAction };
       state: 'wander' | 'idle' | 'interact';
       target: THREE.Vector3;
       timer: number;
       interactTarget: THREE.Group | null;
+      walkBob: number;
     }>
   >([]);
   // Drone-swarm welcome text (points sampled from canvas-rendered text)
@@ -723,13 +674,58 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       orientToTangent: true,
     });
 
-    // 3. 🦊 Little Fox — now a free-roaming pet (Quaternius Ultimate Animated Animal Pack, CC0)
-    // Replaces the former orbit item; interactivity for 技能图谱 moved to the glow sphere.
-    // Dedicated plain loader for pets (uncompressed skinned GLBs, no Draco).
+    // 3. 🦊 Little Fox — free-roaming pet (Kenney Cube Pets, CC0, static — no
+    // skeletal skinning, so rendering is deterministic across GPUs).
+    // Dedicated plain loader for pets (uncompressed GLBs, no Draco).
     const petLoader = new GLTFLoader();
     const petContactShadowTexture = createContactShadowTexture();
+    // Fallback: force the colormap texture onto every pet mesh from a resolved
+    // URL. Some GPU environments fail to decode the embedded (blob:) texture,
+    // so we also apply it explicitly — harmless when the embedded one works.
+    const applyPetTexture = (root: THREE.Object3D, colormapPath: string) => {
+      const texUrl = getModelCandidateUrls(colormapPath)[0];
+      new THREE.TextureLoader().load(
+        texUrl,
+        (tex) => {
+          tex.colorSpace = THREE.SRGBColorSpace;
+          tex.anisotropy = 4;
+          root.traverse((child) => {
+            const mesh = child as THREE.Mesh;
+            if (!mesh.isMesh || !mesh.material) return;
+            const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+            mats.forEach((m) => {
+              const mat = m as THREE.MeshStandardMaterial;
+              if (mat.map) return;
+              mat.map = tex;
+              mat.needsUpdate = true;
+            });
+          });
+        },
+        undefined,
+        () => console.warn('[pet] colormap fallback failed:', colormapPath)
+      );
+    };
+    // Rescale a static pet to a target height (~0.85 m) and settle it on y=0.
+    const bakeStaticPet = (root: THREE.Object3D, targetHeight: number) => {
+      const box = new THREE.Box3().setFromObject(root);
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z) || 1;
+      const scale = targetHeight / maxDim;
+      root.scale.setScalar(scale);
+      root.updateMatrixWorld(true);
+      const box2 = new THREE.Box3().setFromObject(root);
+      const minY = box2.min.y;
+      root.traverse((child) => {
+        const mesh = child as THREE.Mesh;
+        if (mesh.isMesh) {
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+        }
+      });
+      return { scale, minY };
+    };
     const foxPetGroup = new THREE.Group();
-    const foxPetUrls = getModelCandidateUrls('models/orb-fox.glb');
+    const foxPetUrls = getModelCandidateUrls('models/pet-fox/model.glb');
     const loadFoxPet = (idx = 0) => {
       if (idx >= foxPetUrls.length) return;
       petLoader.load(
@@ -737,57 +733,20 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         (gltf) => {
           try {
             const fs = gltf.scene;
-            const fmixer = new THREE.AnimationMixer(fs);
-            const factions: { [key: string]: THREE.AnimationAction } = {};
-            gltf.animations.forEach((clip) => {
-              const name = clip.name.split('|').pop() || clip.name;
-              factions[name] = fmixer.clipAction(clip);
-            });
-            const fidle = factions['Idle'] || factions['Idle_2'];
-            // Collapse the tail chain (Tail1..Tail8) BEFORE the mixer update,
-            // so the collapsed bone matrices land in skeleton.boneMatrices
-            // (what the GPU skinning actually reads). Doing it after update
-            // leaves the render-time matrices untouched and the pole tail stays.
-            for (let i = 1; i <= 8; i++) {
-              const tb = fs.getObjectByName('Tail' + i);
-              if (tb) tb.scale.setScalar(0.001);
-            }
-            if (fidle) {
-              fidle.play();
-              fmixer.update(0.001); // first animated frame so bones leave bind pose
-            }
-            // Bake scale + ground offset into geometry (skinned-mesh root
-            // transform double-applies through bone matrices — invisible).
-            const fskinnedBox = computeSkinnedBox3(fs);
-            const fsize = fskinnedBox.getSize(new THREE.Vector3());
-            const fmaxDim = Math.max(fsize.x, fsize.y, fsize.z) || 1;
-            const fbakeScale = 0.8 / fmaxDim;
-            const fgroundY = fskinnedBox.min.y * fbakeScale;
-            fs.traverse((child) => {
-              const mesh = child as THREE.Mesh;
-              if (mesh.isMesh) {
-                const g = mesh.geometry;
-                g.scale(fbakeScale, fbakeScale, fbakeScale);
-                g.translate(0, -fgroundY, 0);
-                g.computeBoundingBox();
-                g.computeBoundingSphere();
-                mesh.castShadow = true;
-                mesh.receiveShadow = true;
-              }
-            });
-            // No extra root scale: this pack's skinned rendering double-applies
-            // the root scale on real GPUs, so 2 over-sized the pets there.
-            fs.scale.setScalar(1);
-            fs.updateMatrixWorld(true);
+            const { minY } = bakeStaticPet(fs, 0.85);
+            fs.position.y = -minY; // settle paws on the floor
+            fs.rotation.y = Math.PI; // face the stage center by default
+            applyPetTexture(fs, 'models/pet-fox/Textures/colormap.png');
             foxPetGroup.add(fs);
             petsRef.current.push({
               group: foxPetGroup,
-              mixer: fmixer,
-              actions: factions,
+              mixer: null,
+              actions: {},
               state: 'idle',
               target: new THREE.Vector3(-2.6, 0, 2.0),
               timer: 0.8,
               interactTarget: null,
+              walkBob: 0,
             });
           } catch (e) {
             console.warn('[pet] fox load handler error:', e);
@@ -816,6 +775,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     );
     foxShadowDisc.rotation.x = -Math.PI / 2;
     foxShadowDisc.position.y = 0.005;
+    foxShadowDisc.userData.isShadowDisc = true;
     foxPetGroup.add(foxShadowDisc);
 
 
@@ -966,11 +926,11 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     });
 
     // -------------------------------------------------------------------------
-    // Wandering Pet (Shiba Inu, Quaternius Ultimate Animated Animal Pack, CC0)
+    // Wandering Pet (Dog, Kenney Cube Pets, CC0, static — no skeletal skinning)
     // Free-roams the stage floor; walks toward and interacts with orbit items.
     // -------------------------------------------------------------------------
     const petGroup = new THREE.Group();
-    const petUrls = getModelCandidateUrls('models/orb-shiba.glb');
+    const petUrls = getModelCandidateUrls('models/pet-dog/model.glb');
     const loadPet = (idx = 0) => {
       if (idx >= petUrls.length) return;
       petLoader.load(
@@ -978,67 +938,27 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         (gltf) => {
           try {
             const s = gltf.scene;
-            const mixer = new THREE.AnimationMixer(s);
-            const actions: { [key: string]: THREE.AnimationAction } = {};
-            gltf.animations.forEach((clip) => {
-              const name = clip.name.split('|').pop() || clip.name;
-              actions[name] = mixer.clipAction(clip);
-            });
-            const pick = (prefs: string[]) =>
-              prefs.map((p) => actions[p]).find((a) => !!a) || null;
-            const idle = pick(['Idle', 'Idle_2']);
-            // Collapse the tail chain (Tail1..Tail3) BEFORE the mixer update,
-            // so the collapsed bone matrices land in skeleton.boneMatrices
-            // (what the GPU skinning actually reads).
-            for (let i = 1; i <= 3; i++) {
-              const tb = s.getObjectByName('Tail' + i);
-              if (tb) tb.scale.setScalar(0.001);
-            }
-            if (idle) {
-              idle.play();
-              mixer.update(0.001); // advance to first animated frame so bones leave bind pose
-            }
-            // Bake scale + ground offset into geometry instead of the gltf root:
-            // mutating the root scale/position of a skinned mesh double-applies
-            // through bone matrices (modelView * boneWorld) and renders invisible.
-            const skinnedBox = computeSkinnedBox3(s);
-            const size = skinnedBox.getSize(new THREE.Vector3());
-            const maxDim = Math.max(size.x, size.y, size.z) || 1;
-            const bakeScale = 0.85 / maxDim;
-            const groundY = skinnedBox.min.y * bakeScale;
-            s.traverse((child) => {
-              const mesh = child as THREE.Mesh;
-              if (mesh.isMesh) {
-                const g = mesh.geometry;
-                g.scale(bakeScale, bakeScale, bakeScale);
-                g.translate(0, -groundY, 0);
-                g.computeBoundingBox();
-                g.computeBoundingSphere();
-                mesh.castShadow = true;
-                mesh.receiveShadow = true;
-              }
-            });
-            // No extra root scale: this pack's skinned rendering double-applies
-            // the root scale on real GPUs, so 2 over-sized the pets there.
-            s.scale.setScalar(1);
-            s.updateMatrixWorld(true);
+            const { minY } = bakeStaticPet(s, 0.85);
+            s.position.y = -minY; // settle paws on the floor
+            applyPetTexture(s, 'models/pet-dog/Textures/colormap.png');
             petGroup.add(s);
             petsRef.current.push({
               group: petGroup,
-              mixer,
-              actions,
+              mixer: null,
+              actions: {},
               state: 'idle',
               target: new THREE.Vector3(2.6, 0, 1.8),
               timer: 1.2,
               interactTarget: null,
+              walkBob: 0,
             });
           } catch (e) {
-            console.warn('[pet] shiba load handler error:', e);
+            console.warn('[pet] dog load handler error:', e);
           }
         },
         undefined,
         (err) => {
-          console.warn('[pet] shiba fetch failed', idx, (err as Error)?.message);
+          console.warn('[pet] dog fetch failed', idx, (err as Error)?.message);
           loadPet(idx + 1);
         }
       );
@@ -1059,6 +979,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     );
     petShadowDisc.rotation.x = -Math.PI / 2;
     petShadowDisc.position.y = 0.005;
+    petShadowDisc.userData.isShadowDisc = true;
     petGroup.add(petShadowDisc);
 
     // -------------------------------------------------------------------------
@@ -1487,26 +1408,21 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         ap.mat.color.set(currentPersona.orbitColor || 0x5ba8ff);
       }
 
-      // Wandering pet AI (Shiba Inu + Fox): idle → wander → interact with nearest orbit item
+      // Wandering pet AI (Dog + Fox, static models): idle → wander → interact
       for (const pet of petsRef.current) {
         const pg = pet.group;
-        // Skeletal animation paused on real GPUs (bind-pose matrix divergence
-        // fragments the mesh); pets keep their Idle first-frame pose and still
-        // move across the floor. Re-enable once the animation path is fixed.
-        // pet.mixer.update(delta);
         const petPos = pg.position;
-        const pickAnim = (prefs: string[]) => {
-          for (const p of prefs) {
-            const a = pet.actions[p];
-            if (a && !a.isRunning()) {
-              pet.actions['Idle']?.stop();
-              pet.actions['Idle_2']?.stop();
-              pet.actions['Walk']?.stop();
-              a.reset().fadeIn(0.18).play();
-              return;
-            }
-          }
-        };
+        // Static pets have no skeletal animations; a walk-bob + slow idle
+        // breathing gives them life while keeping rendering deterministic.
+        pet.walkBob += delta * 9;
+        const bobAmp = pet.state === 'wander' ? 0.06 : 0.028;
+        // Bob only the model (skip the floor shadow disc) so it never floats
+        pg.children.forEach((child) => {
+          if ((child as THREE.Mesh).userData.isShadowDisc) return;
+          child.position.y = Math.abs(Math.sin(pet.walkBob)) * bobAmp;
+        });
+        // Slight forward lean while walking, gentle breathing while idle
+        pg.rotation.z = pet.state === 'wander' ? 0.05 + Math.sin(pet.walkBob) * 0.03 : Math.sin(pet.walkBob * 0.5) * 0.012;
         const rotToward = (tx: number, tz: number) => {
           const dy = tx - petPos.x;
           const dz = tz - petPos.z;
@@ -1526,7 +1442,6 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
             const r = 2.0 + Math.random() * 2.3;
             pet.target.set(Math.cos(a) * r, 0, Math.sin(a) * r);
             pet.state = 'wander';
-            pickAnim(['Walk']);
           }
         } else if (pet.state === 'wander') {
           const dx = pet.target.x - petPos.x;
@@ -1535,11 +1450,10 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           if (dist < 0.18) {
             pet.state = 'idle';
             pet.timer = 1.2 + Math.random() * 2.2;
-            pickAnim(['Idle', 'Idle_2']);
           } else {
             rotToward(pet.target.x, pet.target.z);
             const step = Math.min(delta * 0.55, dist);
-            petPos.x += Math.sin(pet.group.rotation.y) * step;
+            petPos.x += Math.sin(pg.rotation.y) * step;
             petPos.z += Math.cos(pg.rotation.y) * step;
             // Interaction check: near an interactive orbit item?
             const nearCandidates: THREE.Group[] = [];
@@ -1562,7 +1476,6 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
               pet.state = 'interact';
               pet.timer = 2.2;
               rotToward(nearestItem.position.x, nearestItem.position.z);
-              pickAnim(['Idle_2', 'Idle']);
               audioEngine.playSFX('hover');
             }
           }
@@ -1575,7 +1488,6 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
             pet.interactTarget = null;
             pet.state = 'idle';
             pet.timer = 1.5 + Math.random() * 2.0;
-            pickAnim(['Idle', 'Idle_2']);
           }
         }
       }
