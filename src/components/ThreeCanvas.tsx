@@ -152,6 +152,17 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   const pointerDownPosRef = useRef({ x: 0, y: 0 });
   const hoveredItemRef = useRef<THREE.Group | null>(null);
 
+  // --- Loading orchestration: real aggregated progress across every GLB ---
+  // Critical set = current character + 3 interactive orbit GLBs (saturn, earth-moon,
+  // pickup sphere); the paper plane is procedural and ready instantly. All decorative
+  // GLBs are tracked too so the progress bar reflects true remaining work.
+  const loadedModelsRef = useRef<Set<string>>(new Set());
+  const criticalModelsRef = useRef<Set<string>>(new Set());
+  const allModelsRef = useRef<string[]>([]);
+  const releasedRef = useRef(false);
+  const releaseTimerRef = useRef<number | null>(null);
+  const perfFrameRef = useRef(0);
+
   // Keep latest callbacks in ref
   const callbacksRef = useRef({
     onSelectOrbitItem,
@@ -173,6 +184,66 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       onWelcomeInteract,
     };
   });
+
+  // Report a model as arrived; recompute aggregated progress. Critical models
+  // (character + interactive orbit GLBs) gate the loading-screen release, with
+  // an 8s fallback timer so a slow decoration can never trap the visitor.
+  const reportModelArrived = (url: string) => {
+    // Once released, freeze progress at 100 — later arrivals (or the 8s
+    // fallback) must not drag the LoadingScreen back below its fade-out
+    // threshold of 100.
+    if (releasedRef.current) return;
+    loadedModelsRef.current.add(url);
+    const all = allModelsRef.current;
+    const total = all.length || 1;
+    const done = all.filter((u) => loadedModelsRef.current.has(u)).length;
+    const criticalDone =
+      criticalModelsRef.current.size > 0
+        ? [...criticalModelsRef.current].every((u) => loadedModelsRef.current.has(u))
+        : false;
+    const pct = Math.min(95, Math.round(15 + (done / total) * 80));
+    const text = criticalDone
+      ? `正在补缀环绕装饰 (${done}/${total})…`
+      : `正在构筑展台 (${done}/${total})…`;
+    callbacksRef.current.onLoadProgress?.(pct, text);
+    if (criticalDone && !releasedRef.current) {
+      releasedRef.current = true;
+      if (releaseTimerRef.current) window.clearTimeout(releaseTimerRef.current);
+      // LoadingScreen fades out only at displayPercent >= 100, so push to 100
+      // on release; decorations keep streaming in underneath.
+      callbacksRef.current.onLoadProgress?.(100, '展台就绪，正在补缀环绕细节…');
+      callbacksRef.current.onLoadComplete?.();
+    }
+  };
+
+  const forceReleaseLoading = () => {
+    if (releasedRef.current) return;
+    releasedRef.current = true;
+    callbacksRef.current.onLoadProgress?.(100, '展台就绪');
+    callbacksRef.current.onLoadComplete?.();
+  };
+
+  // Background byte-prefetch of the other 4 character GLBs via THREE.Cache, so
+  // switching personas later skips the network round-trip on weak connections.
+  const prefetchCharacterModels = (currentPath: string) => {
+    THREE.Cache.enabled = true;
+    MODEL_PRESETS.forEach((p) => {
+      if (p.path === currentPath) return;
+      const url = getModelCandidateUrls(p.path)[0];
+      if (!url || THREE.Cache.get(url)) return;
+      fetch(url)
+        .then((r) => {
+          if (!r.ok) throw new Error(String(r.status));
+          return r.arrayBuffer();
+        })
+        .then((buf) => {
+          try {
+            THREE.Cache.add(url, buf);
+          } catch (e) {}
+        })
+        .catch(() => {});
+    });
+  };
 
   // Project 3D vector to 2D screen coordinate
   const toScreenPosition = (worldVec: THREE.Vector3): ScreenCoord => {
@@ -308,6 +379,35 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
+    // Register every GLB that will stream in during this mount (character is
+    // registered by its own loading effect; orbit + decor models listed here).
+    const currentPreset =
+      MODEL_PRESETS.find((p) => p.id === activeModelId) || MODEL_PRESETS[0];
+    const characterPath = currentPreset.path;
+    allModelsRef.current = [
+      characterPath,
+      'models/saturn.glb',
+      'models/earth_moon.glb',
+      'models/orb-pickup_sphere-transformed.glb',
+      'models/orb-planet_5-transformed.glb',
+      'models/orb-spaceship_finnthefrog-transformed.glb',
+      'models/orb-rover_1-transformed.glb',
+      'models/orb-rover_2-transformed.glb',
+      'models/decor-speeder.glb',
+      'models/decor-satellite-dish.glb',
+      'models/decor-astronaut.glb',
+      'models/decor-miner.glb',
+      'models/decor-meteor.glb',
+    ];
+    criticalModelsRef.current = new Set([
+      characterPath,
+      'models/saturn.glb',
+      'models/earth_moon.glb',
+      'models/orb-pickup_sphere-transformed.glb',
+    ]);
+    // Fallback release: never trap the visitor behind a slow decoration.
+    releaseTimerRef.current = window.setTimeout(forceReleaseLoading, 8000);
 
     const width = container.clientWidth || window.innerWidth;
     const height = container.clientHeight || window.innerHeight;
@@ -594,6 +694,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
             }
           });
           planetGroup.add(s);
+          reportModelArrived('models/saturn.glb');
         },
         undefined,
         () => loadSaturnModel(idx + 1)
@@ -689,6 +790,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
             }
           });
           contactGroup.add(es);
+          reportModelArrived('models/earth_moon.glb');
         },
         undefined,
         () => loadEarthModel(idx + 1)
@@ -735,6 +837,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
               }
             });
             group.add(s);
+            reportModelArrived(`models/${fileName}`);
           },
           undefined,
           () => load(idx + 1)
@@ -1398,6 +1501,17 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       }
 
       renderer.render(scene, camera);
+
+      // Lightweight perf survey: log draw calls & triangle count every 120
+      // frames (roughly every 2 s at 60 fps) after the first 300 frames, so
+      // scene additions can be sanity-checked without a profiler.
+      perfFrameRef.current++;
+      if (perfFrameRef.current === 300 || perfFrameRef.current % 120 === 0) {
+        const info = renderer.info.render;
+        console.info(
+          `[perf] frame=${perfFrameRef.current} drawCalls=${info.calls} triangles=${info.triangles}`
+        );
+      }
     };
 
     animate();
@@ -1614,10 +1728,13 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           characterPivotRef.current.add(modelScene);
           audioEngine.playSFX('dressup');
           callbacksRef.current.onModelLoadedMessage?.(`已载入：${modelDisplayName}`);
-          callbacksRef.current.onLoadProgress?.(100, `已就绪：${modelDisplayName}`);
-          setTimeout(() => {
-            callbacksRef.current.onLoadComplete?.();
-          }, 450);
+          // Report arrival into the aggregated loader; the loading screen is
+          // released once all critical models (character + interactive orbit
+          // GLBs) are in, with an 8s fallback timer.
+          reportModelArrived(preset.path);
+          // Background-prefetch the other 4 character GLBs for instant persona
+          // switching later (byte-level THREE.Cache, no network on switch).
+          prefetchCharacterModels(preset.path);
         },
         (xhr) => {
           if (xhr.lengthComputable && xhr.total > 0) {
