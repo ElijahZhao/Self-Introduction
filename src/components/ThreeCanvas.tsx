@@ -6,6 +6,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { MODEL_PRESETS } from '../data/modelsConfig';
 import { getModelCandidateUrls } from '../utils/assetUrl';
+import gsap from 'gsap';
 import {
   PersonaConfig,
   OrbitModuleId,
@@ -162,6 +163,14 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   const releasedRef = useRef(false);
   const releaseTimerRef = useRef<number | null>(null);
   const perfFrameRef = useRef(0);
+  // Current character path, readable from the loading orchestration callbacks
+  // (force-release fallback must wait for the protagonist, never release an
+  // empty pedestal ahead of it).
+  const characterPathRef = useRef<string>('');
+  // Fully-decoded character GLB scenes for instant persona switching. After the
+  // first load, the other 4 characters are warmed in the background so a switch
+  // just re-parents a ready scene instead of re-parsing Draco on the main thread.
+  const characterSceneCacheRef = useRef<Map<string, THREE.Group>>(new Map());
 
   // Keep latest callbacks in ref
   const callbacksRef = useRef({
@@ -218,6 +227,11 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
   const forceReleaseLoading = () => {
     if (releasedRef.current) return;
+    // The protagonist is the core of the pedestal: the 8s fallback exists so a
+    // slow decoration can never trap the visitor, but it must NOT release ahead
+    // of the character (that produced an empty stage). If the character has not
+    // arrived yet, skip — reportModelArrived() re-checks on arrival.
+    if (!loadedModelsRef.current.has(characterPathRef.current)) return;
     releasedRef.current = true;
     callbacksRef.current.onLoadProgress?.(100, '展台就绪');
     callbacksRef.current.onLoadComplete?.();
@@ -242,6 +256,79 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           } catch (e) {}
         })
         .catch(() => {});
+    });
+  };
+
+  // Shared character polish used by both the live loader and the warm cache:
+  // vinyl material tuning + pedestal calibration (same rules for both paths so
+  // a warmed scene is visually identical to one loaded on demand).
+  const prepareCharacterScene = (scene: THREE.Object3D) => {
+    scene.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        const m = (child as THREE.Mesh).material;
+        if (m && (m as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
+          const stdMat = m as THREE.MeshStandardMaterial;
+          stdMat.roughness = 0.65;
+          stdMat.metalness = Math.max(stdMat.metalness ?? 0.05, 0.08);
+          stdMat.envMapIntensity = 0.7;
+          stdMat.map = boostTextureSaturation(stdMat.map, 1.25);
+        }
+      }
+    });
+
+    const box = new THREE.Box3().setFromObject(scene);
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+    const targetHeight = 2.25;
+    const scale = targetHeight / maxDim;
+    scene.scale.setScalar(scale);
+
+    const scaledBox = new THREE.Box3().setFromObject(scene);
+    scene.position.y = -scaledBox.min.y;
+    scene.position.x = -(scaledBox.min.x + scaledBox.max.x) / 2;
+    scene.position.z = -(scaledBox.min.z + scaledBox.max.z) / 2;
+
+    // Persist the pedestal calibration so a warmed/cached scene can be reset to
+    // its exact pose before each entrance animation (entrance tweens scale/y and
+    // must never accumulate across rapid switches).
+    scene.userData.pedestal = {
+      scale,
+      x: scene.position.x,
+      y: scene.position.y,
+      z: scene.position.z,
+    };
+  };
+
+  // Decode the other 4 character GLBs in the background (DRACO + material
+  // polish + calibration) so switching personas later is an instant re-parent,
+  // not a main-thread parse. Runs after each successful load; idempotent.
+  const warmCharacterCache = (currentPath: string) => {
+    MODEL_PRESETS.forEach((p) => {
+      if (p.path === currentPath) return;
+      if (characterSceneCacheRef.current.has(p.path)) return;
+      const url = getModelCandidateUrls(p.path)[0];
+      if (!url) return;
+      // Stagger so the first page view / current model never competes with warming.
+      window.setTimeout(() => {
+        const warmLoader = new GLTFLoader();
+        const warmDraco = new DRACOLoader();
+        warmDraco.setDecoderPath('draco/');
+        warmLoader.setDRACOLoader(warmDraco);
+        warmLoader.load(
+          url,
+          (gltf) => {
+            if (characterSceneCacheRef.current.has(p.path)) return;
+            try {
+              prepareCharacterScene(gltf.scene);
+              characterSceneCacheRef.current.set(p.path, gltf.scene);
+            } catch (e) {}
+          },
+          undefined,
+          () => {}
+        );
+      }, 0);
     });
   };
 
@@ -385,6 +472,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     const currentPreset =
       MODEL_PRESETS.find((p) => p.id === activeModelId) || MODEL_PRESETS[0];
     const characterPath = currentPreset.path;
+    characterPathRef.current = characterPath;
     allModelsRef.current = [
       characterPath,
       'models/saturn.glb',
@@ -1656,6 +1744,9 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       if (index >= candidateUrls.length) {
         console.error('All model candidate URLs failed to load:', candidateUrls);
         callbacksRef.current.onModelLoadedMessage?.(`载入 3D 模型【${modelDisplayName}】失败，已保留原模型`);
+        // Mark arrival anyway so the loading screen can never be stuck behind a
+        // broken character asset (the release fallback also waits on it).
+        reportModelArrived(preset.path);
         return;
       }
 
@@ -1664,51 +1755,29 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         targetUrl,
         (gltf) => {
           if (isCancelled || !characterPivotRef.current) return;
-          if (externalModelRef.current) {
-            characterPivotRef.current.remove(externalModelRef.current);
-            externalModelRef.current = null;
-          }
+          // Keep the outgoing character on stage during the switch; fade it out
+          // only once the new one is ready (cross-fade, no empty pedestal gap).
+          const outgoing = externalModelRef.current;
           if (mixerRef.current) {
             mixerRef.current.stopAllAction();
             mixerRef.current = null;
           }
           currentActionsRef.current = {};
 
-          const modelScene = gltf.scene;
+          // Prefer the warm-decoded scene when available (instant switch); the
+          // cache entry was already polished + calibrated by prepareCharacterScene.
+          let modelScene: THREE.Group;
+          const cached = characterSceneCacheRef.current.get(preset.path);
+          if (cached) {
+            modelScene = cached;
+          } else {
+            modelScene = gltf.scene;
+            prepareCharacterScene(modelScene);
+          }
           externalModelRef.current = modelScene;
 
-          modelScene.traverse((child) => {
-            if ((child as THREE.Mesh).isMesh) {
-              child.castShadow = true;
-              child.receiveShadow = true;
-              const m = (child as THREE.Mesh).material;
-              if (m && (m as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
-                const stdMat = m as THREE.MeshStandardMaterial;
-                // Soft vinyl/figurine look: matte diffuse with gentle env sheen
-                stdMat.roughness = 0.65;
-                stdMat.metalness = Math.max(stdMat.metalness ?? 0.05, 0.08);
-                stdMat.envMapIntensity = 0.7;
-                // Boost base-color saturation for vivid figurine colors (lighting untouched)
-                stdMat.map = boostTextureSaturation(stdMat.map, 1.25);
-              }
-            }
-          });
-
-          // Calibrate scale and position directly onto pedestal (generic bbox sizing)
-          const box = new THREE.Box3().setFromObject(modelScene);
-          const size = box.getSize(new THREE.Vector3());
-          const maxDim = Math.max(size.x, size.y, size.z) || 1;
-          const targetHeight = 2.25;
-          const scale = targetHeight / maxDim;
-          modelScene.scale.setScalar(scale);
-
-          const scaledBox = new THREE.Box3().setFromObject(modelScene);
-          modelScene.position.y = -scaledBox.min.y;
-          modelScene.position.x = -(scaledBox.min.x + scaledBox.max.x) / 2;
-          modelScene.position.z = -(scaledBox.min.z + scaledBox.max.z) / 2;
-
           // Bone Armature Animations (Idle, Wave, Dance)
-          if (gltf.animations && gltf.animations.length > 0) {
+          if (gltf.animations && gltf.animations.length > 0 && !cached) {
             const mixer = new THREE.AnimationMixer(modelScene);
             mixerRef.current = mixer;
 
@@ -1724,17 +1793,60 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
             idleAction.play();
           }
 
-          // Show loaded GLB
+          // Entrance animation: pop up from a slightly smaller/sunk pose.
+          // Reset to the calibrated pedestal pose first so entrance tweens
+          // never accumulate on a reused (warmed) scene.
+          const cal = (modelScene.userData.pedestal as
+            | { scale: number; x: number; y: number; z: number }
+            | undefined);
+          if (cal) {
+            modelScene.scale.setScalar(cal.scale);
+            modelScene.position.set(cal.x, cal.y, cal.z);
+          }
+          const s0 = cal ? cal.scale : modelScene.scale.x;
+          const y0 = cal ? cal.y : modelScene.position.y;
+          modelScene.scale.setScalar(s0 * 0.8);
+          modelScene.position.y = y0 - 0.38;
           characterPivotRef.current.add(modelScene);
+          gsap.to(modelScene.scale, {
+            x: s0,
+            y: s0,
+            z: s0,
+            duration: 0.55,
+            ease: 'back.out(1.4)',
+          });
+          gsap.to(modelScene.position, {
+            y: y0,
+            duration: 0.55,
+            ease: 'power2.out',
+          });
+
+          // Fade the outgoing model out underneath the fresh entrance.
+          if (outgoing && outgoing !== modelScene) {
+            const oldScale = outgoing.scale.x;
+            gsap.to(outgoing.scale, {
+              x: oldScale * 0.88,
+              y: oldScale * 0.88,
+              z: oldScale * 0.88,
+              duration: 0.22,
+              ease: 'power2.in',
+              onComplete: () => {
+                characterPivotRef.current?.remove(outgoing);
+              },
+            });
+          }
+
           audioEngine.playSFX('dressup');
           callbacksRef.current.onModelLoadedMessage?.(`已载入：${modelDisplayName}`);
           // Report arrival into the aggregated loader; the loading screen is
           // released once all critical models (character + interactive orbit
-          // GLBs) are in, with an 8s fallback timer.
+          // GLBs) are in, with an 8s fallback timer that never runs ahead of
+          // the protagonist.
           reportModelArrived(preset.path);
-          // Background-prefetch the other 4 character GLBs for instant persona
-          // switching later (byte-level THREE.Cache, no network on switch).
+          // Byte-prefetch + full DRACO warm-decode of the other characters so
+          // the next switch is instant.
           prefetchCharacterModels(preset.path);
+          warmCharacterCache(preset.path);
         },
         (xhr) => {
           if (xhr.lengthComputable && xhr.total > 0) {
