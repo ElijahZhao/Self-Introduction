@@ -748,6 +748,14 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
               fidle.play();
               fmixer.update(0.001); // first animated frame so bones leave bind pose
             }
+            // Collapse the tail chain (Tail1..Tail8) so the rendered pet shows
+            // a compact body instead of the pole-shaped bind-pose tail, and the
+            // sizing below is not inflated by the stretched tail.
+            for (let i = 1; i <= 8; i++) {
+              const tb = fs.getObjectByName('Tail' + i);
+              if (tb) tb.scale.setScalar(0.001);
+            }
+            fs.updateMatrixWorld(true);
             // Bake scale + ground offset into geometry (skinned-mesh root
             // transform double-applies through bone matrices — invisible).
             const fskinnedBox = computeSkinnedBox3(fs);
@@ -983,6 +991,14 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
               idle.play();
               mixer.update(0.001); // advance to first animated frame so bones leave bind pose
             }
+            // Collapse the tail chain (Tail1..Tail3) so the rendered pet shows
+            // a compact body instead of the pole-shaped bind-pose tail, and the
+            // sizing below is not inflated by the stretched tail.
+            for (let i = 1; i <= 3; i++) {
+              const tb = s.getObjectByName('Tail' + i);
+              if (tb) tb.scale.setScalar(0.001);
+            }
+            s.updateMatrixWorld(true);
             // Bake scale + ground offset into geometry instead of the gltf root:
             // mutating the root scale/position of a skinned mesh double-applies
             // through bone matrices (modelView * boneWorld) and renders invisible.
