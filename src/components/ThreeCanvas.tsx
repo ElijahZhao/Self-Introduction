@@ -7,6 +7,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { MODEL_PRESETS } from '../data/modelsConfig';
 import { getModelCandidateUrls } from '../utils/assetUrl';
 import gsap from 'gsap';
+import { useLang } from '../i18n';
 import {
   PersonaConfig,
   OrbitModuleId,
@@ -163,6 +164,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   const releasedRef = useRef(false);
   const releaseTimerRef = useRef<number | null>(null);
   const perfFrameRef = useRef(0);
+  const { lang, pick } = useLang();
   // Current character path, readable from the loading orchestration callbacks
   // (force-release fallback must wait for the protagonist, never release an
   // empty pedestal ahead of it).
@@ -212,15 +214,15 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         : false;
     const pct = Math.min(95, Math.round(15 + (done / total) * 80));
     const text = criticalDone
-      ? `正在补缀环绕装饰 (${done}/${total})…`
-      : `正在构筑展台 (${done}/${total})…`;
+      ? pick(`正在补缀环绕装饰 (${done}/${total})…`, `Finishing decorations (${done}/${total})…`)
+      : pick(`正在构筑展台 (${done}/${total})…`, `Building stage (${done}/${total})…`);
     callbacksRef.current.onLoadProgress?.(pct, text);
     if (criticalDone && !releasedRef.current) {
       releasedRef.current = true;
       if (releaseTimerRef.current) window.clearTimeout(releaseTimerRef.current);
       // LoadingScreen fades out only at displayPercent >= 100, so push to 100
       // on release; decorations keep streaming in underneath.
-      callbacksRef.current.onLoadProgress?.(100, '展台就绪，正在补缀环绕细节…');
+      callbacksRef.current.onLoadProgress?.(100, pick('展台就绪，正在补缀环绕细节…','Stage ready, finishing details…'));
       callbacksRef.current.onLoadComplete?.();
     }
   };
@@ -233,7 +235,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     // arrived yet, skip — reportModelArrived() re-checks on arrival.
     if (!loadedModelsRef.current.has(characterPathRef.current)) return;
     releasedRef.current = true;
-    callbacksRef.current.onLoadProgress?.(100, '展台就绪');
+    callbacksRef.current.onLoadProgress?.(100, pick('展台就绪','Ready'));
     callbacksRef.current.onLoadComplete?.();
   };
 
@@ -300,6 +302,53 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       z: scene.position.z,
     };
   };
+
+  // Entrance animation pool: 5 distinct arrival motions, picked at random on
+  // every persona switch. Each entry starts from a deliberate off-pedestal pose
+  // and lands exactly on the calibrated pose, so warmed/cached scenes never
+  // accumulate tween state across rapid switches.
+  type EntranceAnim = (scene: THREE.Object3D, s0: number, y0: number) => void;
+  const entranceAnimations: EntranceAnim[] = [
+    // 1. Spring pop: scale up with overshoot + rise
+    (scene, s0, y0) => {
+      scene.scale.setScalar(s0 * 0.8);
+      scene.position.y = y0 - 0.38;
+      gsap.to(scene.scale, { x: s0, y: s0, z: s0, duration: 0.55, ease: 'back.out(1.4)' });
+      gsap.to(scene.position, { y: y0, duration: 0.55, ease: 'power2.out' });
+    },
+    // 2. Side turn-in: swing around from a half-rotation
+    (scene, s0, y0) => {
+      scene.rotation.y = -Math.PI / 2;
+      scene.scale.setScalar(s0 * 0.85);
+      gsap.to(scene.rotation, { y: 0, duration: 0.7, ease: 'power2.out' });
+      gsap.to(scene.scale, { x: s0, y: s0, z: s0, duration: 0.7, ease: 'back.out(1.6)' });
+    },
+    // 3. Zoom fade: pure scale-up from 0.5
+    (scene, s0, y0) => {
+      scene.scale.setScalar(s0 * 0.5);
+      gsap.to(scene.scale, { x: s0, y: s0, z: s0, duration: 0.6, ease: 'power2.out' });
+    },
+    // 4. Drop from above: bouncy landing
+    (scene, s0, y0) => {
+      scene.position.y = y0 + 1.0;
+      scene.scale.setScalar(s0 * 0.9);
+      gsap.to(scene.position, { y: y0, duration: 0.8, ease: 'bounce.out' });
+      gsap.to(scene.scale, { x: s0, y: s0, z: s0, duration: 0.5, ease: 'power2.out' });
+    },
+    // 5. Jelly wobble: overshoot then settle
+    (scene, s0, y0) => {
+      scene.scale.setScalar(s0 * 0.7);
+      scene.position.y = y0 - 0.2;
+      gsap.to(scene.scale, {
+        keyframes: [
+          { x: s0 * 1.12, y: s0 * 1.12, z: s0 * 1.12, duration: 0.32 },
+          { x: s0, y: s0, z: s0, duration: 0.28 },
+        ],
+        ease: 'power2.out',
+      });
+      gsap.to(scene.position, { y: y0, duration: 0.45, ease: 'power2.out' });
+    },
+  ];
 
   // Decode the other 4 character GLBs in the background (DRACO + material
   // polish + calibration) so switching personas later is an instant re-parent,
@@ -1725,10 +1774,10 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   useEffect(() => {
     // Candidate URLs and Model Meta resolution
     const preset = MODEL_PRESETS.find((p) => p.id === activeModelId) || MODEL_PRESETS[0];
-    const modelDisplayName = preset.name;
+    const modelDisplayName = pick(preset.name, preset.nameEn || preset.name);
     const candidateUrls = getModelCandidateUrls(preset.path);
 
-    callbacksRef.current.onModelLoadedMessage?.(`正在载入 3D 模型【${modelDisplayName}】...`);
+    callbacksRef.current.onModelLoadedMessage?.(pick(`正在载入 3D 模型【${modelDisplayName}】...`, `Loading 3D model [${modelDisplayName}]...`));
 
     let isCancelled = false;
     const loader = new GLTFLoader();
@@ -1743,7 +1792,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       if (isCancelled) return;
       if (index >= candidateUrls.length) {
         console.error('All model candidate URLs failed to load:', candidateUrls);
-        callbacksRef.current.onModelLoadedMessage?.(`载入 3D 模型【${modelDisplayName}】失败，已保留原模型`);
+        callbacksRef.current.onModelLoadedMessage?.(pick(`载入 3D 模型【${modelDisplayName}】失败，已保留原模型`,`Failed to load [${modelDisplayName}], keeping current`));
         // Mark arrival anyway so the loading screen can never be stuck behind a
         // broken character asset (the release fallback also waits on it).
         reportModelArrived(preset.path);
@@ -1793,7 +1842,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
             idleAction.play();
           }
 
-          // Entrance animation: pop up from a slightly smaller/sunk pose.
+          // Entrance animation: pick one of 5 arrival motions at random.
           // Reset to the calibrated pedestal pose first so entrance tweens
           // never accumulate on a reused (warmed) scene.
           const cal = (modelScene.userData.pedestal as
@@ -1805,21 +1854,10 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           }
           const s0 = cal ? cal.scale : modelScene.scale.x;
           const y0 = cal ? cal.y : modelScene.position.y;
-          modelScene.scale.setScalar(s0 * 0.8);
-          modelScene.position.y = y0 - 0.38;
+          const pickEntrance =
+            entranceAnimations[Math.floor(Math.random() * entranceAnimations.length)];
+          pickEntrance(modelScene, s0, y0);
           characterPivotRef.current.add(modelScene);
-          gsap.to(modelScene.scale, {
-            x: s0,
-            y: s0,
-            z: s0,
-            duration: 0.55,
-            ease: 'back.out(1.4)',
-          });
-          gsap.to(modelScene.position, {
-            y: y0,
-            duration: 0.55,
-            ease: 'power2.out',
-          });
 
           // Fade the outgoing model out underneath the fresh entrance.
           if (outgoing && outgoing !== modelScene) {
@@ -1837,7 +1875,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           }
 
           audioEngine.playSFX('dressup');
-          callbacksRef.current.onModelLoadedMessage?.(`已载入：${modelDisplayName}`);
+          callbacksRef.current.onModelLoadedMessage?.(pick(`已载入：${modelDisplayName}`,`Loaded: ${modelDisplayName}`));
           // Report arrival into the aggregated loader; the loading screen is
           // released once all critical models (character + interactive orbit
           // GLBs) are in, with an 8s fallback timer that never runs ahead of
@@ -1852,11 +1890,11 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           if (xhr.lengthComputable && xhr.total > 0) {
             const raw = Math.round((xhr.loaded / xhr.total) * 100);
             const mapped = Math.min(98, Math.max(28, Math.round(28 + raw * 0.7)));
-            callbacksRef.current.onLoadProgress?.(mapped, `正在加载 3D 角色 (${mapped}%)...`);
+            callbacksRef.current.onLoadProgress?.(mapped, pick(`正在加载 3D 角色 (${mapped}%)...`,`Loading 3D character (${mapped}%)...`));
           } else if (xhr.loaded > 0) {
             const approxTotal = 1.0 * 1024 * 1024;
             const approx = Math.min(95, Math.max(28, Math.round(28 + (xhr.loaded / approxTotal) * 68)));
-            callbacksRef.current.onLoadProgress?.(approx, `正在传输 3D 资产数据...`);
+            callbacksRef.current.onLoadProgress?.(approx, pick(`正在传输 3D 资产数据...`,`Transferring 3D assets...`));
           }
         },
         (err) => {

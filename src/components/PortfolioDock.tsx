@@ -1,11 +1,13 @@
 import React from 'react';
 import { OrbitModuleId, BuiltinModelId, ThemeMode } from '../types';
 import { MODEL_PRESETS } from '../data/modelsConfig';
+import { useLang } from '../i18n';
 
 interface PortfolioDockProps {
   activeModelId: BuiltinModelId;
   themeMode: ThemeMode;
   activeOrbitModuleId: OrbitModuleId | null;
+  immersive: boolean;
   onSelectModule: (id: OrbitModuleId) => void;
   onSelectModel: (id: BuiltinModelId) => void;
 }
@@ -14,25 +16,27 @@ export const PortfolioDock: React.FC<PortfolioDockProps> = ({
   activeModelId,
   themeMode,
   activeOrbitModuleId,
+  immersive,
   onSelectModule,
   onSelectModel,
 }) => {
   const isDark = themeMode === 'dark';
+  const { t, pick } = useLang();
 
   const navItems: { id: OrbitModuleId; emoji: string; title: string; hint: string }[] = [
-    { id: 'about', emoji: '🪐', title: '关于我', hint: '土星 · 个人画像' },
-    { id: 'projects', emoji: '✈️', title: '代表作品', hint: '纸飞机 · 经历作品' },
-    { id: 'hobbies', emoji: '🦊', title: '技能图谱', hint: '小狐狸 · 技术栈' },
-    { id: 'contact', emoji: '🎧', title: '联络交流', hint: '地月 · 社交渠道' },
+    { id: 'about', emoji: '🪐', title: pick('关于我','About'), hint: pick('土星 · 个人画像','Saturn · Profile') },
+    { id: 'projects', emoji: '✈️', title: pick('代表作品','Projects'), hint: pick('纸飞机 · 经历作品','Plane · Work') },
+    { id: 'hobbies', emoji: '🦊', title: pick('技能图谱','Skills'), hint: pick('小狐狸 · 技术栈','Fox · Stack') },
+    { id: 'contact', emoji: '🎧', title: pick('联络交流','Contact'), hint: pick('地月 · 社交渠道','Moon · Channels') },
   ];
 
   return (
-    <footer className="fixed bottom-0 left-0 right-0 z-20 px-3 sm:px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] flex flex-col items-center gap-2 pointer-events-none max-w-full">
+    <footer className={`fixed bottom-0 left-0 right-0 z-20 px-3 sm:px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] flex flex-col items-center gap-2 pointer-events-none max-w-full transition-opacity duration-300 ${immersive ? 'opacity-0 pointer-events-none' : ''}`}>
       {/* Interactive Helper Hint */}
       <div className="glass-pill px-3 py-1 rounded-full text-[11px] flex items-center gap-1.5 shadow-xs pointer-events-auto transition-opacity opacity-90 hover:opacity-100">
         <span className="text-sky-500 animate-pulse">●</span>
         <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>
-          拖拽环绕视角 · 点击环绕的土星、纸飞机、能量球与地月打开介绍 · 底部右侧切换主角
+          {t('dock.hint')}
         </span>
       </div>
 
@@ -85,10 +89,10 @@ export const PortfolioDock: React.FC<PortfolioDockProps> = ({
                     ? 'text-slate-400 hover:bg-white/10 hover:text-white border border-transparent'
                     : 'text-slate-500 hover:bg-white/70 hover:text-slate-900 border border-transparent'
                 }`}
-                title={`${model.name} · ${model.desc}`}
+                title={pick(`${model.name} · ${model.desc}`, `${model.nameEn || model.name} · ${model.descEn || model.desc}`)}
               >
                 <span className="text-sm">{model.emoji}</span>
-                <span className="hidden min-[480px]:inline text-[11px]">{model.name.replace(/版$/, '')}</span>
+                <span className="hidden min-[480px]:inline text-[11px]">{pick(model.name.replace(/版$/, ''), model.nameEn || model.name)}</span>
               </button>
             );
           })}

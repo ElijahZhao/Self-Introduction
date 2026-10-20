@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ThemeMode } from '../types';
+import { useLang } from '../i18n';
 
 interface LoadingScreenProps {
   progress: number; // 0 to 100
@@ -44,6 +45,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
   if (!shouldRender) return null;
 
   const isDark = themeMode === 'dark';
+  const { pick, t } = useLang();
   const radius = 52;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - Math.min(100, displayPercent) / 100);
@@ -151,14 +153,14 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
               isDark ? 'text-slate-100' : 'text-slate-800'
             }`}
           >
-            赵玉林 · 3D 个人展台
+            {pick('Elijah Zhao · 3D 个人展台', t('loading.title'))}
           </h3>
           <p
             className={`text-xs font-medium ${
               isDark ? 'text-slate-400' : 'text-slate-500'
             }`}
           >
-            正在构筑三维星轨空间与角色模型
+            {t('loading.subtitle')}
           </p>
 
           {/* Dynamic Status Text */}
@@ -169,7 +171,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
                 : 'bg-sky-50/80 text-sky-700 border border-sky-100'
             }`}
           >
-            {statusText || '正在载入 3D 资产...'}
+            {statusText || t('loading.readyShort')}
           </div>
         </div>
 

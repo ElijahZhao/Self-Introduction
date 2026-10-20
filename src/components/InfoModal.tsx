@@ -1,5 +1,6 @@
 import React from 'react';
 import { OrbitModuleId, PersonaConfig, PersonaId, ThemeMode } from '../types';
+import { useLang } from '../i18n';
 
 interface InfoModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
   if (!mod) return null;
 
   const isDark = themeMode === 'dark';
+  const { pick, lang } = useLang();
 
   const emojiMap: Record<OrbitModuleId, string> = {
     about: '🪐',
@@ -38,7 +40,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
   };
 
   const handleSpeakerClick = () => {
-    onPlayVoice(`${mod.title}。${mod.text}`);
+    onPlayVoice(`${pick(mod.title, mod.titleEn || mod.title)}。${pick(mod.text, mod.textEn || mod.text)}`);
   };
 
   return (
@@ -64,7 +66,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
               ? 'text-slate-400 hover:text-slate-100 hover:bg-white/10'
               : 'text-slate-500 hover:text-slate-800 hover:bg-white/60'
           }`}
-          aria-label="关闭弹窗"
+          aria-label={pick('关闭弹窗','Close')}
         >
           ✕
         </button>
@@ -80,17 +82,17 @@ export const InfoModal: React.FC<InfoModalProps> = ({
                 id="modal-title"
                 className={`text-lg font-bold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-800'}`}
               >
-                {mod.title}
+                {pick(mod.title, mod.titleEn || mod.title)}
               </h2>
               <span
                 id="modal-persona-badge"
                 className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${currentPersona.badgeClass}`}
               >
-                {currentPersona.name}
+                {pick(currentPersona.name, currentPersona.nameEn || currentPersona.name)}
               </span>
             </div>
             <p id="modal-subtitle" className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              {mod.subtitle}
+              {pick(mod.subtitle, mod.subtitleEn || mod.subtitle)}
             </p>
           </div>
         </div>
@@ -103,13 +105,13 @@ export const InfoModal: React.FC<InfoModalProps> = ({
           }`}
         >
           <p id="modal-text-main" className="whitespace-pre-line">
-            {mod.text}
+            {pick(mod.text, mod.textEn || mod.text)}
           </p>
 
           {/* Tags */}
           {mod.tags && mod.tags.length > 0 && (
             <div id="modal-tags" className="flex flex-wrap gap-1.5 pt-1">
-              {mod.tags.map((tag, idx) => (
+              {(mod.tagsEn && lang === 'en' ? mod.tagsEn : mod.tags).map((tag, idx) => (
                 <span
                   key={idx}
                   className={`px-2.5 py-1 rounded-lg text-xs font-medium border shadow-2xs ${
@@ -144,7 +146,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
                       : 'bg-slate-800/90 hover:bg-slate-900 text-white'
                   }`}
                 >
-                  {lnk.label}
+                  {pick(lnk.label, lnk.labelEn || lnk.label)}
                 </button>
               ))}
             </div>
@@ -170,8 +172,8 @@ export const InfoModal: React.FC<InfoModalProps> = ({
             />
             <span id="voice-status-text">
               {isSpeaking
-                ? '正在为你语音朗读卡片介绍...'
-                : '点击右侧喇叭收听语音介绍'}
+                ? pick('正在为你语音朗读卡片介绍...','Reading this card aloud...')
+                : pick('点击右侧喇叭收听语音介绍','Click the speaker to listen')}
             </span>
           </div>
 
@@ -184,7 +186,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
                 ? 'bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-200'
                 : 'bg-white/85 hover:bg-white border border-white text-slate-700'
             } ${isSpeaking ? 'ring-2 ring-sky-400 bg-sky-500/20' : ''}`}
-            title="播放语音介绍 / 朗读"
+            title={pick('播放语音介绍 / 朗读','Play voice intro')}
           >
             <svg
               id="speaker-svg"

@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { PersonaConfig, ThemeMode } from '../types';
+import { useLang } from '../i18n';
 
 interface HeaderProps {
   userName: string;
@@ -11,6 +12,8 @@ interface HeaderProps {
   sfxEnabled: boolean;
   cursorEnabled: boolean;
   cursorStyle: 'rainbow' | 'star';
+  immersive: boolean;
+  onToggleFullscreen: () => void;
   onToggleTheme: () => void;
   onToggleBGM: () => void;
   onToggleSFX: () => void;
@@ -27,6 +30,8 @@ export const Header: React.FC<HeaderProps> = ({
   sfxEnabled,
   cursorEnabled,
   cursorStyle,
+  immersive,
+  onToggleFullscreen,
   onToggleTheme,
   onToggleBGM,
   onToggleSFX,
@@ -34,6 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
   onCycleCursorStyle,
 }) => {
   const isDark = themeMode === 'dark';
+  const { t, pick, lang, toggleLang } = useLang();
   const identityRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
 
@@ -61,7 +67,20 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-20 px-4 sm:px-6 pt-[calc(env(safe-area-inset-top)+0.875rem)] flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+    <>
+      {/* Immersive-mode floating exit button (the only chrome kept in fullscreen) */}
+      {immersive && (
+        <button
+          id="btn-exit-fullscreen"
+          type="button"
+          onClick={onToggleFullscreen}
+          className="fixed top-3 right-3 z-30 glass-pill w-10 h-10 rounded-full flex items-center justify-center text-sm cursor-pointer shadow-md transition hover:scale-105"
+          title={t('header.exitFullscreen.tip')}
+        >
+          ⛶
+        </button>
+      )}
+    <header className={`fixed top-0 left-0 right-0 z-20 px-4 sm:px-6 pt-[calc(env(safe-area-inset-top)+0.875rem)] flex flex-wrap items-center justify-between gap-2 pointer-events-none transition-opacity duration-300 ${immersive ? 'opacity-0 pointer-events-none' : ''}`}>
       {/* Left: Identity Badge & Current Persona Status */}
       <div ref={identityRef} className="glass-panel rounded-2xl px-3.5 py-2 flex items-center gap-3 pointer-events-auto shadow-sm">
         <div
@@ -83,14 +102,14 @@ export const Header: React.FC<HeaderProps> = ({
               id="header-persona-tag"
               className={`text-[11px] font-medium px-2 py-0.5 rounded-full transition-colors duration-300 ${currentPersona.badgeClass}`}
             >
-              {currentPersona.name}
+              {pick(currentPersona.name, currentPersona.nameEn || currentPersona.name)}
             </span>
           </div>
           <p
             id="header-persona-desc"
             className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
           >
-            {currentPersona.desc}
+            {pick(currentPersona.desc, currentPersona.descEn || currentPersona.desc)}
           </p>
         </div>
       </div>
@@ -105,10 +124,10 @@ export const Header: React.FC<HeaderProps> = ({
           className={`glass-pill px-3 py-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
             isDark ? 'text-amber-300 hover:text-amber-200' : 'text-slate-700 hover:text-slate-900'
           }`}
-          title={isDark ? '切换至明亮马卡龙白黏土风' : '切换至沉浸深色太空星轨风'}
+          title={isDark ? t('header.theme.lightTip') : t('header.theme.darkTip')}
         >
           <span>{isDark ? '🌙' : '☀️'}</span>
-          <span className="hidden sm:inline">{isDark ? '深色星空' : '明亮展台'}</span>
+          <span className="hidden sm:inline">{isDark ? t('header.theme.dark') : t('header.theme.light')}</span>
         </button>
 
         {/* BGM Toggle */}
@@ -117,13 +136,13 @@ export const Header: React.FC<HeaderProps> = ({
           type="button"
           onClick={onToggleBGM}
           className="glass-pill px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:text-slate-900 transition flex items-center gap-1.5 cursor-pointer"
-          title="切换轻柔钢琴/八音盒背景音乐"
+          title={t('header.bgm.tip')}
         >
           <span id="bgm-icon">
             {!bgmInitialized ? '🎵' : bgmPlaying ? '🎶' : '🔇'}
           </span>
           <span id="bgm-label" className="hidden sm:inline">
-            {!bgmInitialized ? '治愈 BGM: 待唤醒' : bgmPlaying ? '治愈 BGM: 开' : '治愈 BGM: 关'}
+            {!bgmInitialized ? t('header.bgm.standby') : bgmPlaying ? t('header.bgm.on') : t('header.bgm.off')}
           </span>
         </button>
 
@@ -133,11 +152,11 @@ export const Header: React.FC<HeaderProps> = ({
           type="button"
           onClick={onToggleSFX}
           className="glass-pill px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:text-slate-900 transition flex items-center gap-1.5 cursor-pointer"
-          title="切换清脆游戏 UI 音效"
+          title={t('header.sfx.tip')}
         >
           <span id="sfx-icon">{sfxEnabled ? '🔔' : '🔕'}</span>
           <span id="sfx-label" className="hidden sm:inline">
-            {sfxEnabled ? 'UI 音效: 开' : 'UI 音效: 关'}
+            {sfxEnabled ? t('header.sfx.on') : t('header.sfx.off')}
           </span>
         </button>
 
@@ -147,11 +166,11 @@ export const Header: React.FC<HeaderProps> = ({
           type="button"
           onClick={onToggleCursor}
           className="glass-pill px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:text-slate-900 transition flex items-center gap-1.5 cursor-pointer"
-          title={cursorEnabled ? '关闭流体光标' : '开启流体光标'}
+          title={cursorEnabled ? t('header.cursor.onTip') : t('header.cursor.offTip')}
         >
           <span id="cursor-icon">{cursorEnabled ? '💫' : '🚫'}</span>
           <span id="cursor-label" className="hidden sm:inline">
-            光标: {cursorEnabled ? '开' : '关'}
+            {t('header.cursor.on').replace(': 开','')} {cursorEnabled ? 'ON' : 'OFF'}
           </span>
         </button>
 
@@ -161,14 +180,38 @@ export const Header: React.FC<HeaderProps> = ({
           type="button"
           onClick={onCycleCursorStyle}
           className="glass-pill px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:text-slate-900 transition flex items-center gap-1.5 cursor-pointer"
-          title={cursorStyle === 'rainbow' ? '切换为星夜流光光标' : '切换为彩虹流体光标'}
+          title={cursorStyle === 'rainbow' ? t('header.cursor.rainbowTip') : t('header.cursor.starTip')}
         >
           <span id="cursor-style-icon">{cursorStyle === 'rainbow' ? '🌈' : '🌌'}</span>
           <span id="cursor-style-label" className="hidden sm:inline">
-            {cursorStyle === 'rainbow' ? '彩虹' : '星夜'}
+            {cursorStyle === 'rainbow' ? t('header.cursor.rainbow') : t('header.cursor.star')}
           </span>
+        </button>
+
+        {/* Language Toggle */}
+        <button
+          id="btn-lang"
+          type="button"
+          onClick={toggleLang}
+          className="glass-pill px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-slate-900 transition flex items-center gap-1 cursor-pointer"
+          title={t('header.lang.tip')}
+        >
+          🌐 {lang === 'zh' ? 'EN' : '中'}
+        </button>
+
+        {/* Immersive Fullscreen Toggle */}
+        <button
+          id="btn-fullscreen"
+          type="button"
+          onClick={onToggleFullscreen}
+          className="glass-pill px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:text-slate-900 transition flex items-center gap-1.5 cursor-pointer"
+          title={t('header.fullscreen.tip')}
+        >
+          <span>⛶</span>
+          <span className="hidden sm:inline">全屏</span>
         </button>
       </div>
     </header>
+    </>
   );
 };

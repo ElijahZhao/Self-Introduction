@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { LangProvider, useLang } from './i18n';
 import {
   PersonaId,
   OrbitModuleId,
@@ -23,7 +24,13 @@ import { AuroraBackground } from './components/AuroraBackground';
 import { SplashCursor } from './components/SplashCursor';
 import { GsapEntrance } from './components/GsapEntrance';
 
-export const App: React.FC = () => {
+export const App: React.FC = () => (
+  <LangProvider>
+    <AppInner />
+  </LangProvider>
+);
+
+const AppInner: React.FC = () => {
   // Theme Mode (Light / Dark)
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     try {
@@ -86,6 +93,23 @@ export const App: React.FC = () => {
   // View & Modal state
   const [activeOrbitModuleId, setActiveOrbitModuleId] = useState<OrbitModuleId | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Immersive fullscreen: once the browser enters fullscreen, hide all
+  // navigation chrome (header controls + bottom dock) for a clean viewing
+  // stage. Esc (or the floating exit button) leaves fullscreen and restores it.
+  const [immersive, setImmersive] = useState(false);
+  useEffect(() => {
+    const onFsChange = () => setImmersive(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFsChange);
+    return () => document.removeEventListener('fullscreenchange', onFsChange);
+  }, []);
+  const handleToggleFullscreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+  };
 
   // Hover & 3D Pinning
   const [hoverData, setHoverData] = useState<{
@@ -367,6 +391,8 @@ export const App: React.FC = () => {
         sfxEnabled={sfxEnabled}
         cursorEnabled={cursorEnabled}
         cursorStyle={cursorStyle}
+        immersive={immersive}
+        onToggleFullscreen={handleToggleFullscreen}
         onToggleTheme={handleToggleTheme}
         onToggleBGM={handleToggleBGM}
         onToggleSFX={handleToggleSFX}
@@ -392,6 +418,7 @@ export const App: React.FC = () => {
         activeModelId={activeModelId}
         themeMode={themeMode}
         activeOrbitModuleId={activeOrbitModuleId}
+        immersive={immersive}
         onSelectModule={handleSelectOrbitItem}
         onSelectModel={handleSelectModel}
       />

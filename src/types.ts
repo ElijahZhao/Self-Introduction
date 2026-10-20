@@ -4,15 +4,20 @@ export type ThemeMode = 'light' | 'dark';
 
 export interface ActionLink {
   label: string;
+  labelEn?: string;
   actionPersona?: PersonaId;
   copyText?: string;
 }
 
 export interface ModuleData {
   title: string;
+  titleEn?: string;
   subtitle: string;
+  subtitleEn?: string;
   text: string;
+  textEn?: string;
   tags: string[];
+  tagsEn?: string[];
   links: ActionLink[];
 }
 
@@ -32,6 +37,7 @@ export interface OutfitConfig {
 export interface PersonaConfig {
   id: PersonaId;
   name: string;
+  nameEn?: string;
   emoji: string;
   badgeClass: string;
   accentHex: string;
@@ -41,6 +47,7 @@ export interface PersonaConfig {
   bgInnerDark: string;
   bgOuterDark: string;
   desc: string;
+  descEn?: string;
   outfit: OutfitConfig;
   modules: Record<OrbitModuleId, ModuleData>;
 }
@@ -83,9 +90,11 @@ export type BuiltinModelId =
 export interface ModelPreset {
   id: BuiltinModelId;
   name: string;
+  nameEn?: string;
   source: string;
   path: string;
   desc: string;
+  descEn?: string;
   emoji: string;
   hasAnimations?: boolean;
 }
