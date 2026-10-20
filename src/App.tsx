@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { LangProvider, useLang } from './i18n';
 import {
   PersonaId,
@@ -12,7 +12,12 @@ import {
 import { INITIAL_PROFILE_CONFIG, HAIR_PALETTES } from './data/profileConfig';
 import { MODEL_PRESETS, MODEL_IDS } from './data/modelsConfig';
 import { audioEngine } from './services/audioEngine';
-import { ThreeCanvas } from './components/ThreeCanvas';
+// Three.js is the single heaviest dependency (~1MB min). Code-split it so the
+// first paint is just the UI shell + loading screen; the 3D stage (and all of
+// three) loads while the visitor is already watching progress.
+const ThreeCanvas = lazy(() =>
+  import('./components/ThreeCanvas').then((m) => ({ default: m.ThreeCanvas }))
+);
 import { Header } from './components/Header';
 import { InfoModal } from './components/InfoModal';
 import { PortfolioDock } from './components/PortfolioDock';
@@ -355,25 +360,27 @@ const AppInner: React.FC = () => {
         />
       )}
 
-      {/* 3D WebGL Canvas */}
-      <ThreeCanvas
-        currentPersona={currentPersona}
-        accessories={accessories}
-        hairColor={hairColor}
-        themeMode={themeMode}
-        activeModelId={activeModelId}
-        onSelectOrbitItem={handleSelectOrbitItem}
-        onHoverOrbitItem={setHoverData}
-        onUpdateBadgeCoords={setBadgeCoords}
-        onWelcomeInteract={handleWelcomeInteract}
-        onModelLoadedMessage={showToast}
-        onLoadProgress={(pct, text) => {
-          setLoadingProgress(pct);          setLoadingStatusText(text);
-        }}
-        onLoadComplete={() => {
-          setIsLoadingComplete(true);
-        }}
-      />
+      {/* 3D WebGL Canvas (lazy: three.js chunk streams in behind the loading screen) */}
+      <Suspense fallback={null}>
+        <ThreeCanvas
+          currentPersona={currentPersona}
+          accessories={accessories}
+          hairColor={hairColor}
+          themeMode={themeMode}
+          activeModelId={activeModelId}
+          onSelectOrbitItem={handleSelectOrbitItem}
+          onHoverOrbitItem={setHoverData}
+          onUpdateBadgeCoords={setBadgeCoords}
+          onWelcomeInteract={handleWelcomeInteract}
+          onModelLoadedMessage={showToast}
+          onLoadProgress={(pct, text) => {
+            setLoadingProgress(pct);          setLoadingStatusText(text);
+          }}
+          onLoadComplete={() => {
+            setIsLoadingComplete(true);
+          }}
+        />
+      </Suspense>
 
       {/* Floating 3D Audio Waveform Badge */}
       <FloatingWaveBadge coords={badgeCoords} />

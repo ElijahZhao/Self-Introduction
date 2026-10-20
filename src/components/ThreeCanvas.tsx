@@ -173,6 +173,10 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   // first load, the other 4 characters are warmed in the background so a switch
   // just re-parents a ready scene instead of re-parsing Draco on the main thread.
   const characterSceneCacheRef = useRef<Map<string, THREE.Group>>(new Map());
+  // GPU-pre-warmed character paths: their textures/geometry were already
+  // uploaded once via renderer.compile(), so the first switch is a cheap
+  // re-parent instead of a synchronous buffer upload on the critical path.
+  const gpuWarmedRef = useRef<Set<string>>(new Set());
 
   // Keep latest callbacks in ref
   const callbacksRef = useRef({
@@ -353,31 +357,61 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   // Decode the other 4 character GLBs in the background (DRACO + material
   // polish + calibration) so switching personas later is an instant re-parent,
   // not a main-thread parse. Runs after each successful load; idempotent.
+  // Warm the other 4 character GLBs in the background — but ONLY after the
+  // loading screen has been released, one at a time (600ms stagger), and only
+  // in browser idle slots. Decoding 4 × ~800KB Draco buffers simultaneously
+  // right after the protagonist is ready is the main cause of the long "empty
+  // pedestal" hang: it saturates the main thread and starves every other load.
+  // Each decoded scene is also pushed through renderer.compile() on a hidden
+  // scene so textures/geometry are already on the GPU — the first switch is
+  // then a cheap re-parent instead of a synchronous upload stall.
   const warmCharacterCache = (currentPath: string) => {
-    MODEL_PRESETS.forEach((p) => {
-      if (p.path === currentPath) return;
-      if (characterSceneCacheRef.current.has(p.path)) return;
+    const pending = MODEL_PRESETS.filter(
+      (p) => p.path !== currentPath && !characterSceneCacheRef.current.has(p.path)
+    );
+    if (pending.length === 0) return;
+    const idleScheduler =
+      (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number })
+        .requestIdleCallback || ((cb: () => void) => window.setTimeout(cb, 0));
+
+    pending.forEach((p, i) => {
       const url = getModelCandidateUrls(p.path)[0];
       if (!url) return;
-      // Stagger so the first page view / current model never competes with warming.
+      // Wait for the visitor to be released first, then stagger one decode per
+      // ~600ms so a single frame never runs two heavy decodes back to back.
       window.setTimeout(() => {
-        const warmLoader = new GLTFLoader();
-        const warmDraco = new DRACOLoader();
-        warmDraco.setDecoderPath('draco/');
-        warmLoader.setDRACOLoader(warmDraco);
-        warmLoader.load(
-          url,
-          (gltf) => {
-            if (characterSceneCacheRef.current.has(p.path)) return;
-            try {
-              prepareCharacterScene(gltf.scene);
-              characterSceneCacheRef.current.set(p.path, gltf.scene);
-            } catch (e) {}
-          },
-          undefined,
-          () => {}
-        );
-      }, 0);
+        idleScheduler(() => {
+          if (characterSceneCacheRef.current.has(p.path)) return;
+          const warmLoader = new GLTFLoader();
+          const warmDraco = new DRACOLoader();
+          warmDraco.setDecoderPath('draco/');
+          warmLoader.setDRACOLoader(warmDraco);
+          warmLoader.load(
+            url,
+            (gltf) => {
+              if (characterSceneCacheRef.current.has(p.path)) return;
+              try {
+                prepareCharacterScene(gltf.scene);
+                characterSceneCacheRef.current.set(p.path, gltf.scene);
+                // GPU pre-warm: upload geometry + WebP textures to the GL
+                // context via a hidden compile scene, then drop it. Subsequent
+                // switches re-parent the cached scene with zero upload stall.
+                if (rendererRef.current && !gpuWarmedRef.current.has(p.path)) {
+                  const hidden = new THREE.Scene();
+                  hidden.add(gltf.scene);
+                  if (cameraRef.current) {
+                    rendererRef.current.compile(hidden, cameraRef.current);
+                  }
+                  hidden.remove(gltf.scene);
+                  gpuWarmedRef.current.add(p.path);
+                }
+              } catch (e) {}
+            },
+            undefined,
+            () => {}
+          );
+        });
+      }, 1500 + i * 600);
     });
   };
 
