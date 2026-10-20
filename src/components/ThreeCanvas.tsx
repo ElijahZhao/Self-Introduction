@@ -767,9 +767,9 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
                 mesh.receiveShadow = true;
               }
             });
-            // Visible-window scale (same calibration as the Shiba Inu: root scale=1
-            // renders invisible for these Quaternius skinned GLBs).
-            fs.scale.setScalar(4);
+            // Quaternius skinned GLBs collapse below this root scale;
+            // 2 keeps them visible at roughly half the character's height.
+            fs.scale.setScalar(2);
             fs.updateMatrixWorld(true);
             foxPetGroup.add(fs);
             petsRef.current.push({
@@ -1003,11 +1003,9 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
                 mesh.receiveShadow = true;
               }
             });
-            // Visible-window scale: this GLB's skinned render collapses below this
-            // root scale (empirically calibrated in rounds 6–7; scale=1 → invisible,
-            // scale=4 → visible at ~half the character's height). Geometry is already
-            // grounded at scale=1, so a pure root scale keeps the feet on the floor.
-            s.scale.setScalar(4);
+            // Quaternius skinned GLBs collapse below this root scale;
+            // 2 keeps them visible at roughly half the character's height.
+            s.scale.setScalar(2);
             s.updateMatrixWorld(true);
             petGroup.add(s);
             petsRef.current.push({
