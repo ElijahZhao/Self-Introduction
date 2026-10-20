@@ -104,6 +104,19 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   const foxMixerRef = useRef<THREE.AnimationMixer | null>(null);
   const currentActionsRef = useRef<{ [key: string]: THREE.AnimationAction }>({});
   const activeOrbitTargetRef = useRef<THREE.Group | null>(null);
+  // Wandering pet (Shiba Inu, Quaternius CC0) — free-roam with orbit interaction
+  const petRef = useRef<{
+    group: THREE.Group | null;
+    mixer: THREE.AnimationMixer | null;
+    actions: { [key: string]: THREE.AnimationAction };
+    state: 'wander' | 'idle' | 'interact';
+    target: THREE.Vector3;
+    timer: number;
+    interactTarget: THREE.Group | null;
+  } | null>(null);
+  // Drone-swarm welcome text (points sampled from canvas-rendered text)
+  const textPointsRef = useRef<THREE.Points | null>(null);
+  const textGroupRef = useRef<THREE.Group | null>(null);
 
   // Lights & Materials for theme adaptation
   const lightsRef = useRef<{
@@ -836,6 +849,134 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       orientToTangent: true,
     });
 
+    // Rover mk2 (outer orbit) + glowing pickup sphere (inner decor orbit)
+    const rover2Group = new THREE.Group();
+    loadDecorativeOrb(rover2Group, 'orb-rover_2-transformed.glb', 0.45);
+    registerItem(rover2Group, {
+      emoji: '🚙',
+      label: '探索车',
+      radius: 5.9,
+      angle: 1.9,
+      speed: 0.14,
+      baseY: 0.3,
+      orientToTangent: true,
+    });
+
+    const glowSphereGroup = new THREE.Group();
+    loadDecorativeOrb(glowSphereGroup, 'orb-pickup_sphere-transformed.glb', 0.3);
+    registerItem(glowSphereGroup, {
+      emoji: '🔮',
+      label: '能量球',
+      radius: 3.6,
+      angle: 4.4,
+      speed: 0.22,
+      baseY: 0.75,
+    });
+
+    // -------------------------------------------------------------------------
+    // Wandering Pet (Shiba Inu, Quaternius Ultimate Animated Animal Pack, CC0)
+    // Free-roams the stage floor; walks toward and interacts with orbit items.
+    // -------------------------------------------------------------------------
+    const petGroup = new THREE.Group();
+    const petUrls = getModelCandidateUrls('models/orb-shiba.glb');
+    const loadPet = (idx = 0) => {
+      if (idx >= petUrls.length) return;
+      gltfOrbitLoader.load(
+        petUrls[idx],
+        (gltf) => {
+          const s = gltf.scene;
+          const b = new THREE.Box3().setFromObject(s);
+          const size = b.getSize(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z) || 1;
+          s.scale.setScalar(0.85 / maxDim);
+          s.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
+          petGroup.add(s);
+
+          const mixer = new THREE.AnimationMixer(s);
+          const actions: { [key: string]: THREE.AnimationAction } = {};
+          gltf.animations.forEach((clip) => {
+            const name = clip.name.split('|').pop() || clip.name;
+            actions[name] = mixer.clipAction(clip);
+          });
+          const pick = (prefs: string[]) =>
+            prefs.map((p) => actions[p]).find((a) => !!a) || null;
+          const idle = pick(['Idle', 'Idle_2']);
+          if (idle) idle.play();
+          petRef.current = {
+            group: petGroup,
+            mixer,
+            actions,
+            state: 'idle',
+            target: new THREE.Vector3(2.6, 0, 1.8),
+            timer: 1.2,
+            interactTarget: null,
+          };
+        },
+        undefined,
+        () => loadPet(idx + 1)
+      );
+    };
+    loadPet();
+    petGroup.position.set(2.6, 0, 1.8);
+    scene.add(petGroup);
+
+    // -------------------------------------------------------------------------
+    // Drone-Swarm Welcome Text ("欢迎来访者" as a particle constellation)
+    // Canvas 2D → pixel sampling → THREE.Points; floats above behind the stage.
+    // -------------------------------------------------------------------------
+    try {
+      const msg = '欢迎来访者';
+      const cvs = document.createElement('canvas');
+      cvs.width = 640;
+      cvs.height = 180;
+      const ctx = cvs.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, cvs.width, cvs.height);
+        ctx.font = '900 96px "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(msg, cvs.width / 2, cvs.height / 2);
+
+        const imgData = ctx.getImageData(0, 0, cvs.width, cvs.height).data;
+        const positions: number[] = [];
+        const step = 4; // sample every 4px → ~6400 pts for 640x180
+        for (let y = 0; y < cvs.height; y += step) {
+          for (let x = 0; x < cvs.width; x += step) {
+            const alpha = imgData[(y * cvs.width + x) * 4 + 3];
+            if (alpha > 128) {
+              positions.push((x - cvs.width / 2) * 0.008, -(y - cvs.height / 2) * 0.008, 0);
+            }
+          }
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        const mat = new THREE.PointsMaterial({
+          color: currentPersona.orbitColor || 0xffffff,
+          size: 0.045,
+          transparent: true,
+          opacity: 0.9,
+          sizeAttenuation: true,
+          depthWrite: false,
+        });
+        const pts = new THREE.Points(geo, mat);
+        const textGroup = new THREE.Group();
+        textGroup.add(pts);
+        textGroup.position.set(0, 4.6, -3.4);
+        textGroup.rotation.x = -0.08;
+        scene.add(textGroup);
+        textPointsRef.current = pts;
+        textGroupRef.current = textGroup;
+      }
+    } catch (e) {
+      console.warn('Drone text generation failed:', e);
+    }
+
     // -------------------------------------------------------------------------
     // Ambient Particle Field & Saturn-style Particle Ring (decorative, no light)
     // -------------------------------------------------------------------------
@@ -927,7 +1068,9 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
       if (!cameraRef.current) return;
       raycaster.setFromCamera(mouse, cameraRef.current);
-      const colliders = orbitingItemsRef.current.map((g) => g.userData.collider);
+      const colliders = orbitingItemsRef.current
+        .map((g) => g.userData.collider)
+        .filter((c): c is THREE.Object3D => !!c);
       const intersects = raycaster.intersectObjects(colliders, false);
 
       if (intersects.length > 0) {
@@ -967,7 +1110,9 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       if (!cameraRef.current) return;
       raycaster.setFromCamera(mouse, cameraRef.current);
 
-      const orbitColliders = orbitingItemsRef.current.map((g) => g.userData.collider);
+      const orbitColliders = orbitingItemsRef.current
+        .map((g) => g.userData.collider)
+        .filter((c): c is THREE.Object3D => !!c);
       const characterHitMeshes: THREE.Object3D[] = [];
       if (characterPivotRef.current) {
         characterPivotRef.current.traverse((c) => {
@@ -1169,6 +1314,107 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           posAttr.needsUpdate = true;
         }
         ap.mat.color.set(currentPersona.orbitColor || 0x5ba8ff);
+      }
+
+      // Wandering pet AI (Shiba Inu): idle → wander → interact with nearest orbit item
+      const pet = petRef.current;
+      if (pet && pet.group) {
+        const pg = pet.group;
+        pet.mixer?.update(delta);
+        const petPos = pg.position;
+        const pickAnim = (prefs: string[]) => {
+          for (const p of prefs) {
+            const a = pet.actions[p];
+            if (a && !a.isRunning()) {
+              pet.actions['Idle']?.stop();
+              pet.actions['Idle_2']?.stop();
+              pet.actions['Walk']?.stop();
+              a.reset().fadeIn(0.18).play();
+              return;
+            }
+          }
+        };
+        const rotToward = (tx: number, tz: number) => {
+          const dy = tx - petPos.x;
+          const dz = tz - petPos.z;
+          if (Math.hypot(dy, dz) < 0.01) return;
+          const targetY = Math.atan2(dy, dz);
+          let diff = targetY - pg.rotation.y;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          pg.rotation.y += diff * Math.min(1, delta * 6);
+        };
+
+        if (pet.state === 'idle') {
+          pet.timer -= delta;
+          if (pet.timer <= 0) {
+            // Pick a new wander target on the stage floor ring (r 2.0–4.3)
+            const a = Math.random() * Math.PI * 2;
+            const r = 2.0 + Math.random() * 2.3;
+            pet.target.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+            pet.state = 'wander';
+            pickAnim(['Walk']);
+          }
+        } else if (pet.state === 'wander') {
+          const dx = pet.target.x - petPos.x;
+          const dz = pet.target.z - petPos.z;
+          const dist = Math.hypot(dx, dz);
+          if (dist < 0.18) {
+            pet.state = 'idle';
+            pet.timer = 1.2 + Math.random() * 2.2;
+            pickAnim(['Idle', 'Idle_2']);
+          } else {
+            rotToward(pet.target.x, pet.target.z);
+            const step = Math.min(delta * 0.55, dist);
+            petPos.x += Math.sin(pet.group.rotation.y) * step;
+            petPos.z += Math.cos(pg.rotation.y) * step;
+            // Interaction check: near an interactive orbit item?
+            const nearCandidates: THREE.Group[] = [];
+            let nearestDist = 1.15;
+            orbitingItemsRef.current.forEach((g) => {
+              if (!g.userData.id) return; // decorative only
+              const d = Math.hypot(
+                g.position.x - petPos.x,
+                g.position.z - petPos.z
+              );
+              if (d < nearestDist) {
+                nearestDist = d;
+                nearCandidates.length = 0;
+                nearCandidates.push(g);
+              }
+            });
+            const nearestItem = nearCandidates[0];
+            if (nearestItem) {
+              pet.interactTarget = nearestItem;
+              pet.state = 'interact';
+              pet.timer = 2.2;
+              rotToward(nearestItem.position.x, nearestItem.position.z);
+              pickAnim(['Idle_2', 'Idle']);
+              audioEngine.playSFX('hover');
+            }
+          }
+        } else if (pet.state === 'interact') {
+          if (pet.interactTarget) {
+            rotToward(pet.interactTarget.position.x, pet.interactTarget.position.z);
+          }
+          pet.timer -= delta;
+          if (pet.timer <= 0) {
+            pet.interactTarget = null;
+            pet.state = 'idle';
+            pet.timer = 1.5 + Math.random() * 2.0;
+            pickAnim(['Idle', 'Idle_2']);
+          }
+        }
+      }
+
+      // Drone-swarm welcome text: gentle float, slow spin, theme color sync
+      if (textGroupRef.current && textPointsRef.current) {
+        const tg = textGroupRef.current;
+        tg.position.y = 4.6 + Math.sin(elapsed * 0.5) * 0.12;
+        tg.rotation.y = Math.sin(elapsed * 0.22) * 0.18;
+        const tm = textPointsRef.current.material as THREE.PointsMaterial;
+        tm.color.set(currentPersona.orbitColor || 0xffffff);
+        tm.opacity = 0.55 + Math.sin(elapsed * 0.9) * 0.2;
       }
 
       // Update Expanding 3D Shockwave Rings (Translucent & Dissipating at Exact Hit Coordinate)
