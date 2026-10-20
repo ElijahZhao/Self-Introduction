@@ -354,6 +354,23 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     },
   ];
 
+  // GPU pre-warm: upload geometry + WebP textures to the GL context via a
+  // hidden compile scene, then drop it. Subsequent switches re-parent the
+  // cached scene with zero upload stall. Shared by the warm pipeline and the
+  // first (live) load, so the protagonist is pre-warmed too.
+  const gpuPreWarmScene = (path: string, scene: THREE.Object3D) => {
+    if (!rendererRef.current || gpuWarmedRef.current.has(path)) return;
+    try {
+      const hidden = new THREE.Scene();
+      hidden.add(scene);
+      if (cameraRef.current) {
+        rendererRef.current.compile(hidden, cameraRef.current);
+      }
+      hidden.remove(scene);
+      gpuWarmedRef.current.add(path);
+    } catch (e) {}
+  };
+
   // Decode the other 4 character GLBs in the background (DRACO + material
   // polish + calibration) so switching personas later is an instant re-parent,
   // not a main-thread parse. Runs after each successful load; idempotent.
@@ -370,9 +387,15 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       (p) => p.path !== currentPath && !characterSceneCacheRef.current.has(p.path)
     );
     if (pending.length === 0) return;
-    const idleScheduler =
-      (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number })
-        .requestIdleCallback || ((cb: () => void) => window.setTimeout(cb, 0));
+    // requestIdleCallback with a hard 2s timeout: even on a busy main thread
+    // (or under software rendering) the warm decodes are guaranteed to start,
+    // so a mid-warm persona switch never falls back to a blocking live decode.
+    const ric = (window as unknown as {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+    }).requestIdleCallback;
+    const idleScheduler = ric
+      ? (cb: () => void) => ric(cb, { timeout: 2000 })
+      : (cb: () => void) => window.setTimeout(cb, 0);
 
     pending.forEach((p, i) => {
       const url = getModelCandidateUrls(p.path)[0];
@@ -393,18 +416,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
               try {
                 prepareCharacterScene(gltf.scene);
                 characterSceneCacheRef.current.set(p.path, gltf.scene);
-                // GPU pre-warm: upload geometry + WebP textures to the GL
-                // context via a hidden compile scene, then drop it. Subsequent
-                // switches re-parent the cached scene with zero upload stall.
-                if (rendererRef.current && !gpuWarmedRef.current.has(p.path)) {
-                  const hidden = new THREE.Scene();
-                  hidden.add(gltf.scene);
-                  if (cameraRef.current) {
-                    rendererRef.current.compile(hidden, cameraRef.current);
-                  }
-                  hidden.remove(gltf.scene);
-                  gpuWarmedRef.current.add(p.path);
-                }
+                gpuPreWarmScene(p.path, gltf.scene);
               } catch (e) {}
             },
             undefined,
@@ -1856,6 +1868,11 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           } else {
             modelScene = gltf.scene;
             prepareCharacterScene(modelScene);
+            // P0: cache the protagonist too. Warm skips the current character,
+            // so without this every switch back to the default avatar would
+            // re-parse Draco on the main thread (~2.4s measured long task).
+            characterSceneCacheRef.current.set(preset.path, modelScene);
+            gpuPreWarmScene(preset.path, modelScene);
           }
           externalModelRef.current = modelScene;
 
@@ -1890,23 +1907,37 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           const y0 = cal ? cal.y : modelScene.position.y;
           const pickEntrance =
             entranceAnimations[Math.floor(Math.random() * entranceAnimations.length)];
-          pickEntrance(modelScene, s0, y0);
-          characterPivotRef.current.add(modelScene);
 
-          // Fade the outgoing model out underneath the fresh entrance.
-          if (outgoing && outgoing !== modelScene) {
-            const oldScale = outgoing.scale.x;
-            gsap.to(outgoing.scale, {
-              x: oldScale * 0.88,
-              y: oldScale * 0.88,
-              z: oldScale * 0.88,
-              duration: 0.22,
-              ease: 'power2.in',
-              onComplete: () => {
-                characterPivotRef.current?.remove(outgoing);
-              },
-            });
-          }
+          // P0: re-parent first, animate one frame later. The add triggers the
+          // synchronous geometry/texture upload to the GPU; if the entrance
+          // tween starts on that same frame, the upload + tween + old-model
+          // fade collapse into a single >100ms hitch. Waiting one frame lets
+          // the upload settle, then the entrance starts cleanly.
+          characterPivotRef.current.add(modelScene);
+          const startEntrance = () => {
+            if (isCancelled) return;
+            pickEntrance(modelScene, s0, y0);
+
+            // Fade the outgoing model out underneath the fresh entrance.
+            if (outgoing && outgoing !== modelScene) {
+              const oldScale = outgoing.scale.x;
+              gsap.to(outgoing.scale, {
+                x: oldScale * 0.88,
+                y: oldScale * 0.88,
+                z: oldScale * 0.88,
+                duration: 0.22,
+                ease: 'power2.in',
+                onComplete: () => {
+                  characterPivotRef.current?.remove(outgoing);
+                },
+              });
+            }
+          };
+          // Double rAF: the first frame commits the new model to the GPU, the
+          // second starts the motion, keeping the two heaviest costs apart.
+          requestAnimationFrame(() => {
+            requestAnimationFrame(startEntrance);
+          });
 
           audioEngine.playSFX('dressup');
           callbacksRef.current.onModelLoadedMessage?.(pick(`已载入：${modelDisplayName}`,`Loaded: ${modelDisplayName}`));
