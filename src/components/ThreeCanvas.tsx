@@ -64,6 +64,57 @@ const boostTextureSaturation = (tex: THREE.Texture | null, factor: number): THRE
   }
 };
 
+// Compute the world-space bounding box of a skinned scene by manually skinning
+// its vertices (same math as the shader: bindMatrixInverse * boneWorld * boneInverse * bindMatrix).
+// Plain Box3.setFromObject only sees bind-pose geometry (which for these
+// Quaternius pets is collapsed near the origin), so it cannot measure the real size.
+const computeSkinnedBox3 = (root: THREE.Object3D): THREE.Box3 => {
+  const box = new THREE.Box3();
+  const v = new THREE.Vector3();
+  const v4 = new THREE.Vector4();
+  const skinVertex = new THREE.Vector4();
+  const skinned = new THREE.Vector4();
+  const boneMatrix = new THREE.Matrix4();
+  const tmpParent = new THREE.Matrix4();
+  root.updateMatrixWorld(true);
+  let meshCount = 0;
+  let vertCount = 0;
+  let weightSum = 0;
+  root.traverse((o) => {
+    if (!(o as THREE.SkinnedMesh).isSkinnedMesh) return;
+    const sk = o as THREE.SkinnedMesh;
+    meshCount++;
+    const pos = sk.geometry.getAttribute('position');
+    const idx = sk.geometry.getAttribute('skinIndex');
+    const wt = sk.geometry.getAttribute('skinWeight');
+    if (!pos || !idx || !wt) return;
+    const bindMatrix = sk.bindMatrix;
+    const boneInverses = sk.skeleton.boneInverses;
+    const idxArr = idx.array as ArrayLike<number>;
+    const wtArr = wt.array as ArrayLike<number>;
+    o.parent?.updateWorldMatrix(true, false);
+    tmpParent.copy(o.parent ? o.parent.matrixWorld : new THREE.Matrix4());
+    for (let vi = 0; vi < pos.count; vi++) {
+      skinVertex.set(pos.getX(vi), pos.getY(vi), pos.getZ(vi), 1).applyMatrix4(bindMatrix);
+      skinned.set(0, 0, 0, 0);
+      for (let b = 0; b < 4; b++) {
+        const bi = Math.floor(idxArr[vi * 4 + b]);
+        const w = wtArr[vi * 4 + b];
+        weightSum += w;
+        if (!(w > 0)) continue;
+        const bone = sk.skeleton.bones[bi];
+        if (!bone) continue;
+        boneMatrix.copy(bone.matrixWorld).multiply(boneInverses[bi]);
+        skinned.addScaledVector(v4.copy(skinVertex).applyMatrix4(boneMatrix), w);
+      }
+      v4.copy(skinned).applyMatrix4(sk.bindMatrixInverse);
+      box.expandByPoint(v.set(v4.x, v4.y, v4.z).applyMatrix4(tmpParent));
+      vertCount++;
+    }
+  });
+  return box;
+};
+
 interface ThreeCanvasProps {
   currentPersona: PersonaConfig;
   accessories: AccessoryState;
@@ -686,31 +737,45 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         (gltf) => {
           try {
             const fs = gltf.scene;
-            const b = new THREE.Box3().setFromObject(fs);
-            const size = b.getSize(new THREE.Vector3());
-            const maxDim = Math.max(size.x, size.y, size.z) || 1;
-            fs.scale.setScalar(0.8 / maxDim);
-            const b2 = new THREE.Box3().setFromObject(fs);
-            fs.position.y = -b2.min.y; // ground to y=0
-            fs.traverse((child) => {
-              if ((child as THREE.Mesh).isMesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
-              }
-            });
-            foxPetGroup.add(fs);
-            const mixer = new THREE.AnimationMixer(fs);
-            const actions: { [key: string]: THREE.AnimationAction } = {};
+            const fmixer = new THREE.AnimationMixer(fs);
+            const factions: { [key: string]: THREE.AnimationAction } = {};
             gltf.animations.forEach((clip) => {
               const name = clip.name.split('|').pop() || clip.name;
-              actions[name] = mixer.clipAction(clip);
+              factions[name] = fmixer.clipAction(clip);
             });
-            const idle = actions['Idle'] || actions['Idle_2'];
-            if (idle) idle.play();
+            const fidle = factions['Idle'] || factions['Idle_2'];
+            if (fidle) {
+              fidle.play();
+              fmixer.update(0.001); // first animated frame so bones leave bind pose
+            }
+            // Bake scale + ground offset into geometry (skinned-mesh root
+            // transform double-applies through bone matrices — invisible).
+            const fskinnedBox = computeSkinnedBox3(fs);
+            const fsize = fskinnedBox.getSize(new THREE.Vector3());
+            const fmaxDim = Math.max(fsize.x, fsize.y, fsize.z) || 1;
+            const fbakeScale = 0.8 / fmaxDim;
+            const fgroundY = fskinnedBox.min.y * fbakeScale;
+            fs.traverse((child) => {
+              const mesh = child as THREE.Mesh;
+              if (mesh.isMesh) {
+                const g = mesh.geometry;
+                g.scale(fbakeScale, fbakeScale, fbakeScale);
+                g.translate(0, -fgroundY, 0);
+                g.computeBoundingBox();
+                g.computeBoundingSphere();
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+              }
+            });
+            // Visible-window scale (same calibration as the Shiba Inu: root scale=1
+            // renders invisible for these Quaternius skinned GLBs).
+            fs.scale.setScalar(4);
+            fs.updateMatrixWorld(true);
+            foxPetGroup.add(fs);
             petsRef.current.push({
               group: foxPetGroup,
-              mixer,
-              actions,
+              mixer: fmixer,
+              actions: factions,
               state: 'idle',
               target: new THREE.Vector3(-2.6, 0, 2.0),
               timer: 0.8,
@@ -744,6 +809,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     foxShadowDisc.rotation.x = -Math.PI / 2;
     foxShadowDisc.position.y = 0.005;
     foxPetGroup.add(foxShadowDisc);
+
 
     // 4. 🎧 Celestial Orbit Node / Earth-Moon (SolarSystemLowPoly GitHub)
     const contactGroup = new THREE.Group();
@@ -904,20 +970,6 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         (gltf) => {
           try {
             const s = gltf.scene;
-            const b = new THREE.Box3().setFromObject(s);
-            const size = b.getSize(new THREE.Vector3());
-            const maxDim = Math.max(size.x, size.y, size.z) || 1;
-            s.scale.setScalar(0.85 / maxDim);
-            const b2 = new THREE.Box3().setFromObject(s);
-            s.position.y = -b2.min.y; // ground to y=0 regardless of source origin
-            s.traverse((child) => {
-              if ((child as THREE.Mesh).isMesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
-              }
-            });
-            petGroup.add(s);
-
             const mixer = new THREE.AnimationMixer(s);
             const actions: { [key: string]: THREE.AnimationAction } = {};
             gltf.animations.forEach((clip) => {
@@ -927,7 +979,37 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
             const pick = (prefs: string[]) =>
               prefs.map((p) => actions[p]).find((a) => !!a) || null;
             const idle = pick(['Idle', 'Idle_2']);
-            if (idle) idle.play();
+            if (idle) {
+              idle.play();
+              mixer.update(0.001); // advance to first animated frame so bones leave bind pose
+            }
+            // Bake scale + ground offset into geometry instead of the gltf root:
+            // mutating the root scale/position of a skinned mesh double-applies
+            // through bone matrices (modelView * boneWorld) and renders invisible.
+            const skinnedBox = computeSkinnedBox3(s);
+            const size = skinnedBox.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z) || 1;
+            const bakeScale = 0.85 / maxDim;
+            const groundY = skinnedBox.min.y * bakeScale;
+            s.traverse((child) => {
+              const mesh = child as THREE.Mesh;
+              if (mesh.isMesh) {
+                const g = mesh.geometry;
+                g.scale(bakeScale, bakeScale, bakeScale);
+                g.translate(0, -groundY, 0);
+                g.computeBoundingBox();
+                g.computeBoundingSphere();
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+              }
+            });
+            // Visible-window scale: this GLB's skinned render collapses below this
+            // root scale (empirically calibrated in rounds 6–7; scale=1 → invisible,
+            // scale=4 → visible at ~half the character's height). Geometry is already
+            // grounded at scale=1, so a pure root scale keeps the feet on the floor.
+            s.scale.setScalar(4);
+            s.updateMatrixWorld(true);
+            petGroup.add(s);
             petsRef.current.push({
               group: petGroup,
               mixer,
