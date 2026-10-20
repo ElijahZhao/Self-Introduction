@@ -27,7 +27,7 @@ export const PortfolioDock: React.FC<PortfolioDockProps> = ({
   ];
 
   return (
-    <footer className="fixed bottom-0 left-0 right-0 z-20 px-3 sm:px-4 pb-3 sm:pb-4 flex flex-col items-center gap-2 pointer-events-none max-w-full">
+    <footer className="fixed bottom-0 left-0 right-0 z-20 px-3 sm:px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] flex flex-col items-center gap-2 pointer-events-none max-w-full">
       {/* Interactive Helper Hint */}
       <div className="glass-pill px-3 py-1 rounded-full text-[11px] flex items-center gap-1.5 shadow-xs pointer-events-auto transition-opacity opacity-90 hover:opacity-100">
         <span className="text-sky-500 animate-pulse">●</span>
@@ -36,10 +36,12 @@ export const PortfolioDock: React.FC<PortfolioDockProps> = ({
         </span>
       </div>
 
-      {/* Main Portfolio Navigation Dock */}
-      <div className="glass-panel rounded-2xl sm:rounded-full px-3.5 py-1.5 sm:py-2 flex items-center justify-between gap-1.5 sm:gap-2.5 pointer-events-auto shadow-md max-w-full overflow-x-auto">
+      {/* Main Portfolio Navigation Dock: single row on desktop, stacked
+          module + persona rows on narrow/mobile screens so nothing is
+          hidden behind the horizontal scroll edge. */}
+      <div className="glass-panel rounded-2xl sm:rounded-full px-3.5 py-1.5 sm:py-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1 sm:gap-2.5 pointer-events-auto shadow-md max-w-full overflow-x-auto">
         {/* Module Triggers */}
-        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <div className="flex items-center justify-between gap-1 sm:gap-1.5 shrink-0">
           {navItems.map((item) => {
             const isActive = activeOrbitModuleId === item.id;
             return (
@@ -47,7 +49,7 @@ export const PortfolioDock: React.FC<PortfolioDockProps> = ({
                 key={item.id}
                 type="button"
                 onClick={() => onSelectModule(item.id)}
-                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                   isActive
                     ? 'bg-sky-500 text-white shadow-sm font-semibold'
                     : isDark
@@ -63,10 +65,10 @@ export const PortfolioDock: React.FC<PortfolioDockProps> = ({
           })}
         </div>
 
-        <div className={`h-4 w-px mx-0.5 sm:mx-1 shrink-0 ${isDark ? 'bg-white/15' : 'bg-slate-300/80'}`} />
+        <div className={`h-px w-full sm:h-4 sm:w-px mx-0.5 sm:mx-1 shrink-0 ${isDark ? 'bg-white/15' : 'bg-slate-300/80'}`} />
 
         {/* 3D 主角团切换（5 个手办模型） */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center justify-between gap-1 shrink-0">
           {MODEL_PRESETS.map((model) => {
             const isCurrent = activeModelId === model.id;
             return (
@@ -86,7 +88,7 @@ export const PortfolioDock: React.FC<PortfolioDockProps> = ({
                 title={`${model.name} · ${model.desc}`}
               >
                 <span className="text-sm">{model.emoji}</span>
-                <span className="hidden md:inline text-[11px]">{model.name.replace(/版$/, '')}</span>
+                <span className="hidden min-[480px]:inline text-[11px]">{model.name.replace(/版$/, '')}</span>
               </button>
             );
           })}

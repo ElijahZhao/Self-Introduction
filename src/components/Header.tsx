@@ -61,7 +61,7 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-20 px-4 sm:px-6 pt-3.5 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+    <header className="fixed top-0 left-0 right-0 z-20 px-4 sm:px-6 pt-[calc(env(safe-area-inset-top)+0.875rem)] flex flex-wrap items-center justify-between gap-2 pointer-events-none">
       {/* Left: Identity Badge & Current Persona Status */}
       <div ref={identityRef} className="glass-panel rounded-2xl px-3.5 py-2 flex items-center gap-3 pointer-events-auto shadow-sm">
         <div
