@@ -767,9 +767,9 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
                 mesh.receiveShadow = true;
               }
             });
-            // Quaternius skinned GLBs collapse below this root scale;
-            // 2 keeps them visible at roughly half the character's height.
-            fs.scale.setScalar(2);
+            // No extra root scale: this pack's skinned rendering double-applies
+            // the root scale on real GPUs, so 2 over-sized the pets there.
+            fs.scale.setScalar(1);
             fs.updateMatrixWorld(true);
             foxPetGroup.add(fs);
             petsRef.current.push({
@@ -1003,9 +1003,9 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
                 mesh.receiveShadow = true;
               }
             });
-            // Quaternius skinned GLBs collapse below this root scale;
-            // 2 keeps them visible at roughly half the character's height.
-            s.scale.setScalar(2);
+            // No extra root scale: this pack's skinned rendering double-applies
+            // the root scale on real GPUs, so 2 over-sized the pets there.
+            s.scale.setScalar(1);
             s.updateMatrixWorld(true);
             petGroup.add(s);
             petsRef.current.push({
