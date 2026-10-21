@@ -196,7 +196,8 @@ class AudioEngineService {
 
     // Prefer bundled edge-tts voice clips (natural male voice) when a key exists.
     if (voiceKey && typeof window !== 'undefined') {
-      const url = resolveAssetUrl(`audio/voice/${voiceKey}.mp3`);
+      // File convention: voice-{persona}-{module}-{lang}.mp3
+      const url = resolveAssetUrl(`audio/voice/voice-${voiceKey}.mp3`);
       const audio = new Audio(url);
       const fallback = () => {
         audio.src = '';
