@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef } from 'react';
+import React, { useLayoutEffect, useRef, useState, useEffect } from 'react';
 import gsap from 'gsap';
 import { PersonaConfig, ThemeMode } from '../types';
 import { useLang } from '../i18n';
@@ -18,7 +18,7 @@ interface HeaderProps {
   onToggleBGM: () => void;
   onToggleSFX: () => void;
   onToggleCursor: () => void;
-  onCycleCursorStyle: () => void;
+  onSetCursorStyle: (style: 'rainbow' | 'star') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -36,12 +36,26 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleBGM,
   onToggleSFX,
   onToggleCursor,
-  onCycleCursorStyle,
+  onSetCursorStyle,
 }) => {
   const isDark = themeMode === 'dark';
   const { t, pick, lang, toggleLang } = useLang();
   const identityRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
+  const [cursorMenuOpen, setCursorMenuOpen] = useState(false);
+  const cursorMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close cursor style dropdown when clicking outside
+  useEffect(() => {
+    if (!cursorMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (cursorMenuRef.current && !cursorMenuRef.current.contains(e.target as Node)) {
+        setCursorMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [cursorMenuOpen]);
 
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
@@ -160,33 +174,53 @@ export const Header: React.FC<HeaderProps> = ({
           </span>
         </button>
 
-        {/* Fluid Cursor Toggle */}
-        <button
-          id="btn-cursor-toggle"
-          type="button"
-          onClick={onToggleCursor}
-          className="glass-pill px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:text-slate-900 transition flex items-center gap-1.5 cursor-pointer"
-          title={cursorEnabled ? t('header.cursor.onTip') : t('header.cursor.offTip')}
-        >
-          <span id="cursor-icon">{cursorEnabled ? '💫' : '🚫'}</span>
-          <span id="cursor-label" className="hidden sm:inline">
-            {t('header.cursor.on').replace(': 开','')} {cursorEnabled ? 'ON' : 'OFF'}
-          </span>
-        </button>
-
-        {/* Fluid Cursor Style Cycle */}
-        <button
-          id="btn-cursor-style"
-          type="button"
-          onClick={onCycleCursorStyle}
-          className="glass-pill px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:text-slate-900 transition flex items-center gap-1.5 cursor-pointer"
-          title={cursorStyle === 'rainbow' ? t('header.cursor.rainbowTip') : t('header.cursor.starTip')}
-        >
-          <span id="cursor-style-icon">{cursorStyle === 'rainbow' ? '🌈' : '🌌'}</span>
-          <span id="cursor-style-label" className="hidden sm:inline">
-            {cursorStyle === 'rainbow' ? t('header.cursor.rainbow') : t('header.cursor.star')}
-          </span>
-        </button>
+        {/* Fluid Cursor: toggle + style dropdown (2-in-1) */}
+        <div ref={cursorMenuRef} className="relative flex items-center">
+          <button
+            id="btn-cursor-toggle"
+            type="button"
+            onClick={onToggleCursor}
+            className="glass-pill px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:text-slate-900 transition flex items-center gap-1.5 cursor-pointer rounded-r-none"
+            title={cursorEnabled ? t('header.cursor.onTip') : t('header.cursor.offTip')}
+          >
+            <span id="cursor-icon">{cursorEnabled ? '💫' : '🚫'}</span>
+            <span id="cursor-label" className="hidden sm:inline">
+              {cursorEnabled ? 'ON' : 'OFF'}
+            </span>
+          </button>
+          <button
+            id="btn-cursor-menu"
+            type="button"
+            onClick={() => setCursorMenuOpen((v) => !v)}
+            className={`glass-pill px-2 py-2 rounded-xl text-xs font-medium text-slate-700 hover:text-slate-900 transition flex items-center cursor-pointer rounded-l-none border-l border-white/40 ${cursorMenuOpen ? 'bg-white/90' : ''}`}
+            title={cursorStyle === 'rainbow' ? t('header.cursor.rainbowTip') : t('header.cursor.starTip')}
+          >
+            <span className="text-sm">{cursorStyle === 'rainbow' ? '🌈' : '🌌'}</span>
+            <span className={`text-[10px] ml-0.5 transition-transform ${cursorMenuOpen ? 'rotate-180' : ''}`}>▾</span>
+          </button>
+          {cursorMenuOpen && (
+            <div className="absolute top-full right-0 mt-2 z-40 glass-panel rounded-xl p-1.5 shadow-lg min-w-[140px]">
+              <button
+                type="button"
+                onClick={() => { onSetCursorStyle('rainbow'); setCursorMenuOpen(false); }}
+                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition flex items-center gap-2 cursor-pointer ${cursorStyle === 'rainbow' ? 'bg-sky-100/80 text-sky-700' : 'text-slate-600 hover:bg-white/60'}`}
+              >
+                <span>🌈</span>
+                <span>{t('header.cursor.rainbow')}</span>
+                {cursorStyle === 'rainbow' && <span className="ml-auto text-sky-500">✓</span>}
+              </button>
+              <button
+                type="button"
+                onClick={() => { onSetCursorStyle('star'); setCursorMenuOpen(false); }}
+                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition flex items-center gap-2 cursor-pointer ${cursorStyle === 'star' ? 'bg-indigo-100/80 text-indigo-700' : 'text-slate-600 hover:bg-white/60'}`}
+              >
+                <span>🌌</span>
+                <span>{t('header.cursor.star')}</span>
+                {cursorStyle === 'star' && <span className="ml-auto text-indigo-500">✓</span>}
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Language Toggle */}
         <button

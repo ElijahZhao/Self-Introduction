@@ -113,6 +113,9 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   const textGroupRef = useRef<THREE.Group | null>(null);
   const textHoverRef = useRef(false);
   const textColliderRef = useRef<THREE.Mesh | null>(null);
+  // Particle text carousel: fixed pool + target positions for lerp transitions
+  const textTargetPosRef = useRef<Float32Array | null>(null);
+  const textIndexRef = useRef(0);
 
   // Lights & Materials for theme adaptation
   const lightsRef = useRef<{
@@ -188,6 +191,74 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     onLoadComplete,
     onWelcomeInteract,
   });
+
+  // ── Particle text carousel (ZH/EN mixed, drone-formation re-shuffle) ──
+  const PARTICLE_TEXTS = [
+    '欢迎来访者',
+    '代码写得好，头发掉得少',
+    'There are 10 types of people...',
+    'debug 到凌晨，bug 说你好',
+    'I would tell you a UDP joke, but you might not get it.',
+    '愿你今天的 commit 都一次通过',
+    '404: 灵感未找到',
+    'Hello World 是一切的开始',
+    'A SQL query walks into a bar...',
+    'while(true) { keepCoding(); }',
+    '人生苦短，我用 Python',
+    'It works on my machine',
+    '山川湖海，皆入代码',
+    '星光不问赶路人',
+    'const life = code + coffee;',
+    '在吗？帮我改个 bug',
+  ];
+  const MAX_TEXT_PARTICLES = 4000;
+
+  const setTextMessage = (msg: string) => {
+    const targets = textTargetPosRef.current;
+    if (!targets) return;
+    const cvs = document.createElement('canvas');
+    cvs.width = 640;
+    cvs.height = 180;
+    const ctx = cvs.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, cvs.width, cvs.height);
+    const charLen = msg.length;
+    const fontSize = charLen > 14 ? 56 : charLen > 10 ? 68 : charLen > 7 ? 80 : 96;
+    ctx.font = `900 ${fontSize}px "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(msg, cvs.width / 2, cvs.height / 2);
+    const imgData = ctx.getImageData(0, 0, cvs.width, cvs.height).data;
+    const step = 3;
+    let idx = 0;
+    for (let y = 0; y < cvs.height; y += step) {
+      for (let x = 0; x < cvs.width; x += step) {
+        const alpha = imgData[(y * cvs.width + x) * 4 + 3];
+        if (alpha > 128 && idx < MAX_TEXT_PARTICLES) {
+          targets[idx * 3] = (x - cvs.width / 2) * 0.011;
+          targets[idx * 3 + 1] = -(y - cvs.height / 2) * 0.011;
+          targets[idx * 3 + 2] = 0;
+          idx++;
+        }
+      }
+    }
+    for (let i = idx; i < MAX_TEXT_PARTICLES; i++) {
+      targets[i * 3] = 999;
+      targets[i * 3 + 1] = 999;
+      targets[i * 3 + 2] = 0;
+    }
+  };
+
+  // Auto-rotate particle text every 10 seconds (drone formation re-shuffle)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      textIndexRef.current = (textIndexRef.current + 1) % PARTICLE_TEXTS.length;
+      setTextMessage(PARTICLE_TEXTS[textIndexRef.current]);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     callbacksRef.current = {
       onSelectOrbitItem,
@@ -1165,54 +1236,42 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     });
 
     // -------------------------------------------------------------------------
-    // Drone-Swarm Welcome Text ("欢迎来访者" as a particle constellation)
+    // Drone-Swarm Particle Text Carousel (fixed pool + lerp re-formation)
     // Canvas 2D → pixel sampling → THREE.Points; floats above behind the stage.
     // -------------------------------------------------------------------------
     try {
-      const msg = '欢迎来访者';
-      const cvs = document.createElement('canvas');
-      cvs.width = 640;
-      cvs.height = 180;
-      const ctx = cvs.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(0, 0, cvs.width, cvs.height);
-        ctx.font = '900 96px "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(msg, cvs.width / 2, cvs.height / 2);
+      // Fixed particle pool so transitions are smooth re-formation (no rebuild)
+      const positions = new Float32Array(MAX_TEXT_PARTICLES * 3);
+      const targetPositions = new Float32Array(MAX_TEXT_PARTICLES * 3);
+      for (let i = 0; i < MAX_TEXT_PARTICLES; i++) {
+        positions[i * 3] = 999; positions[i * 3 + 1] = 999; positions[i * 3 + 2] = 0;
+        targetPositions[i * 3] = 999; targetPositions[i * 3 + 1] = 999; targetPositions[i * 3 + 2] = 0;
+      }
+      textTargetPosRef.current = targetPositions;
 
-        const imgData = ctx.getImageData(0, 0, cvs.width, cvs.height).data;
-        const positions: number[] = [];
-        const step = 3; // sample every 3px → denser constellation
-        for (let y = 0; y < cvs.height; y += step) {
-          for (let x = 0; x < cvs.width; x += step) {
-            const alpha = imgData[(y * cvs.width + x) * 4 + 3];
-            if (alpha > 128) {
-              positions.push((x - cvs.width / 2) * 0.011, -(y - cvs.height / 2) * 0.011, 0);
-            }
-          }
-        }
-        const geo = new THREE.BufferGeometry();
-        geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-        const mat = new THREE.PointsMaterial({
-          color: 0x4da6ff,
-          size: 0.07,
-          transparent: true,
-          opacity: 0.95,
-          sizeAttenuation: true,
-          depthWrite: false,
-        });
-        const pts = new THREE.Points(geo, mat);
-        const textGroup = new THREE.Group();
-        textGroup.add(pts);
-        textGroup.position.set(0, 3.7, -1.4);
-        textGroup.rotation.x = -0.05;
-        scene.add(textGroup);
-        textPointsRef.current = pts;
-        textGroupRef.current = textGroup;
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const mat = new THREE.PointsMaterial({
+        color: 0x4da6ff,
+        size: 0.07,
+        transparent: true,
+        opacity: 0.95,
+        sizeAttenuation: true,
+        depthWrite: false,
+      });
+      const pts = new THREE.Points(geo, mat);
+      const textGroup = new THREE.Group();
+      textGroup.add(pts);
+      textGroup.position.set(0, 3.7, -1.4);
+      textGroup.rotation.x = -0.05;
+      scene.add(textGroup);
+      textPointsRef.current = pts;
+      textGroupRef.current = textGroup;
 
-        // Invisible collider for hover/click interaction on the welcome text
+      // Initial message — particles fly in from the far distance
+      setTextMessage(PARTICLE_TEXTS[0]);
+
+      // Invisible collider for hover/click interaction on the particle text
         const textCollider = new THREE.Mesh(
           new THREE.SphereGeometry(1.35, 12, 12),
           new THREE.MeshBasicMaterial({ visible: false })
@@ -1221,7 +1280,6 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         textCollider.scale.set(2.6, 0.9, 1.2);
         textGroup.add(textCollider);
         textColliderRef.current = textCollider;
-      }
     } catch (e) {
       console.warn('Drone text generation failed:', e);
     }
@@ -1382,6 +1440,9 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           const hitP = textHits[0].point.clone();
           spawn3DShockwave(hitP, 0x4da6ff);
           audioEngine.playSFX('tap');
+          // Tap cycles to the next carousel message
+          textIndexRef.current = (textIndexRef.current + 1) % PARTICLE_TEXTS.length;
+          setTextMessage(PARTICLE_TEXTS[textIndexRef.current]);
           callbacksRef.current.onWelcomeInteract?.();
           return;
         }
@@ -1600,6 +1661,19 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         // Hover: swell the constellation for an interactive feel
         const targetSize = textHoverRef.current ? 0.105 : 0.07;
         tm.size += (targetSize - tm.size) * Math.min(1, delta * 8);
+        // Lerp each particle toward its target position (drone re-formation)
+        if (textTargetPosRef.current) {
+          const posAttr = textPointsRef.current.geometry.getAttribute('position') as THREE.BufferAttribute;
+          const arr = posAttr.array as Float32Array;
+          const tgt = textTargetPosRef.current;
+          const k = Math.min(1, delta * 2.5);
+          for (let i = 0; i < MAX_TEXT_PARTICLES; i++) {
+            arr[i * 3] += (tgt[i * 3] - arr[i * 3]) * k;
+            arr[i * 3 + 1] += (tgt[i * 3 + 1] - arr[i * 3 + 1]) * k;
+            arr[i * 3 + 2] += (tgt[i * 3 + 2] - arr[i * 3 + 2]) * k;
+          }
+          posAttr.needsUpdate = true;
+        }
       }
 
       // Update Expanding 3D Shockwave Rings (Translucent & Dissipating at Exact Hit Coordinate)

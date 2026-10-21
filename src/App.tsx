@@ -240,14 +240,13 @@ const AppInner: React.FC = () => {
     showToast(next ? '流体光标已开启 ✨' : '流体光标已关闭');
   };
 
-  const handleCycleCursorStyle = () => {
-    const next: 'rainbow' | 'star' = cursorStyle === 'rainbow' ? 'star' : 'rainbow';
-    setCursorStyle(next);
+  const handleSetCursorStyle = (style: 'rainbow' | 'star') => {
+    setCursorStyle(style);
     try {
-      localStorage.setItem('avatar_portfolio_cursor_style', next);
+      localStorage.setItem('avatar_portfolio_cursor_style', style);
     } catch (e) {}
     audioEngine.playSFX('tap');
-    showToast(next === 'rainbow' ? '光标样式：彩虹流体 🌈' : '光标样式：星夜流光 ✨');
+    showToast(style === 'rainbow' ? '光标样式：彩虹流体 🌈' : '光标样式：星夜流光 ✨');
   };
 
   const handleSelectModel = (id: BuiltinModelId) => {
@@ -427,7 +426,7 @@ const AppInner: React.FC = () => {
         onToggleBGM={handleToggleBGM}
         onToggleSFX={handleToggleSFX}
         onToggleCursor={handleToggleCursor}
-        onCycleCursorStyle={handleCycleCursorStyle}
+        onSetCursorStyle={handleSetCursorStyle}
       />
 
       {/* Center Frosted-Glass Info Modal */}
