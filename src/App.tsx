@@ -36,6 +36,7 @@ export const App: React.FC = () => (
 );
 
 const AppInner: React.FC = () => {
+  const { lang } = useLang();
   // Theme Mode (Light / Dark)
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     try {
