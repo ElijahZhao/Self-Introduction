@@ -1,5 +1,6 @@
 import * as Tone from 'tone';
 import { PersonaId } from '../types';
+import { resolveAssetUrl } from '../utils/assetUrl';
 
 export type SFXType = 'hover' | 'tap' | 'ripple' | 'dressup' | 'close' | 'mode';
 
@@ -184,6 +185,7 @@ class AudioEngineService {
 
   public playVoiceIntro(
     textToRead: string,
+    voiceKey?: string,
     onFallbackError?: (msg: string) => void
   ): void {
     this.playSFX('tap');
@@ -192,6 +194,31 @@ class AudioEngineService {
       return;
     }
 
+    // Prefer bundled edge-tts voice clips (natural male voice) when a key exists.
+    if (voiceKey && typeof window !== 'undefined') {
+      const url = resolveAssetUrl(`audio/voice/${voiceKey}.mp3`);
+      const audio = new Audio(url);
+      const fallback = () => {
+        audio.src = '';
+        this.speakViaSynthesis(textToRead, onFallbackError);
+      };
+      audio.onerror = fallback;
+      audio.onended = () => this.notifySpeaking(false);
+      audio.play().catch(() => {
+        this.notifySpeaking(false);
+        fallback();
+      });
+      this.notifySpeaking(true);
+      return;
+    }
+
+    this.speakViaSynthesis(textToRead, onFallbackError);
+  }
+
+  private speakViaSynthesis(
+    textToRead: string,
+    onFallbackError?: (msg: string) => void
+  ): void {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       const utter = new SpeechSynthesisUtterance(textToRead);

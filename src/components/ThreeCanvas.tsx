@@ -223,7 +223,13 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     if (!ctx) return;
     ctx.clearRect(0, 0, cvs.width, cvs.height);
     const charLen = msg.length;
-    const fontSize = charLen > 14 ? 56 : charLen > 10 ? 68 : charLen > 7 ? 80 : 96;
+    // Probe a large font first, then scale down so the whole line fits inside
+    // the 640px canvas with margin (long ZH/EN strings were getting clipped).
+    const probeSize = charLen > 14 ? 56 : charLen > 10 ? 68 : charLen > 7 ? 80 : 96;
+    ctx.font = `900 ${probeSize}px "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif`;
+    const measured = ctx.measureText(msg).width;
+    const SAFE_WIDTH = 600;
+    const fontSize = Math.max(24, Math.min(probeSize, (probeSize * SAFE_WIDTH) / Math.max(1, measured)));
     ctx.font = `900 ${fontSize}px "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';

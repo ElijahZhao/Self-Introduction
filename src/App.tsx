@@ -307,11 +307,11 @@ const AppInner: React.FC = () => {
     setIsModalOpen(false);
   };
 
-  const handlePlayVoice = (text: string) => {
+  const handlePlayVoice = (text: string, voiceKey?: string) => {
     if (isSpeaking) {
       audioEngine.stopVoice();
     } else {
-      audioEngine.playVoiceIntro(text);
+      audioEngine.playVoiceIntro(text, voiceKey ? `${voiceKey}-${lang}` : undefined);
     }
   };
 
@@ -332,8 +332,7 @@ const AppInner: React.FC = () => {
 
   const handleWelcomeInteract = () => {
     audioEngine.playSFX('ripple');
-    showToast('欢迎来访者，很高兴见到你！');
-    audioEngine.playVoiceIntro('欢迎来访者，很高兴见到你！');
+    showToast('切换了一条粒子文字');
   };
 
   return (

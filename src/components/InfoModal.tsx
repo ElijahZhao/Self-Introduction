@@ -9,7 +9,7 @@ interface InfoModalProps {
   themeMode: ThemeMode;
   isSpeaking: boolean;
   onClose: () => void;
-  onPlayVoice: (textToRead: string) => void;
+  onPlayVoice: (textToRead: string, voiceKey: string) => void;
   onSwitchPersona: (personaId: PersonaId) => void;
   onCopyText: (text: string) => void;
 }
@@ -40,7 +40,10 @@ export const InfoModal: React.FC<InfoModalProps> = ({
   };
 
   const handleSpeakerClick = () => {
-    onPlayVoice(`${pick(mod.title, mod.titleEn || mod.title)}。${pick(mod.text, mod.textEn || mod.text)}`);
+    onPlayVoice(
+      `${pick(mod.title, mod.titleEn || mod.title)}。${pick(mod.text, mod.textEn || mod.text)}`,
+      `${currentPersona.id}-${moduleId}`
+    );
   };
 
   return (
