@@ -1260,16 +1260,22 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         depthWrite: false,
       });
       const pts = new THREE.Points(geo, mat);
+      // Particles start far away (999) and lerp in; without this the stale
+      // bounding sphere keeps the whole constellation frustum-culled → invisible.
+      pts.frustumCulled = false;
       const textGroup = new THREE.Group();
       textGroup.add(pts);
-      textGroup.position.set(0, 3.7, -1.4);
+      textGroup.position.set(0, 2.7, -1.4);
       textGroup.rotation.x = -0.05;
       scene.add(textGroup);
       textPointsRef.current = pts;
       textGroupRef.current = textGroup;
 
-      // Initial message — particles fly in from the far distance
+      // Initial message — particles form immediately (no fly-in from far away,
+      // which was getting frustum-culled / invisible). Carousel transitions
+      // still lerp between formations.
       setTextMessage(PARTICLE_TEXTS[0]);
+      positions.set(targetPositions);
 
       // Invisible collider for hover/click interaction on the particle text
         const textCollider = new THREE.Mesh(
@@ -1654,7 +1660,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       // Drone-swarm welcome text: gentle float, slow spin, breathing opacity
       if (textGroupRef.current && textPointsRef.current) {
         const tg = textGroupRef.current;
-        tg.position.y = 3.7 + Math.sin(elapsed * 0.5) * 0.12;
+        tg.position.y = 2.7 + Math.sin(elapsed * 0.5) * 0.12;
         tg.rotation.y = Math.sin(elapsed * 0.22) * 0.18;
         const tm = textPointsRef.current.material as THREE.PointsMaterial;
         tm.opacity = 0.75 + Math.sin(elapsed * 0.9) * 0.2;
@@ -1666,7 +1672,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           const posAttr = textPointsRef.current.geometry.getAttribute('position') as THREE.BufferAttribute;
           const arr = posAttr.array as Float32Array;
           const tgt = textTargetPosRef.current;
-          const k = Math.min(1, delta * 2.5);
+          const k = Math.min(1, delta * 5);
           for (let i = 0; i < MAX_TEXT_PARTICLES; i++) {
             arr[i * 3] += (tgt[i * 3] - arr[i * 3]) * k;
             arr[i * 3 + 1] += (tgt[i * 3 + 1] - arr[i * 3 + 1]) * k;
