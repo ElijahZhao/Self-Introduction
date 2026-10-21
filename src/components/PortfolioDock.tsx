@@ -26,7 +26,7 @@ export const PortfolioDock: React.FC<PortfolioDockProps> = ({
   const navItems: { id: OrbitModuleId; emoji: string; title: string; hint: string }[] = [
     { id: 'about', emoji: '🪐', title: pick('关于我','About'), hint: pick('土星 · 个人画像','Saturn · Profile') },
     { id: 'projects', emoji: '✈️', title: pick('代表作品','Projects'), hint: pick('纸飞机 · 经历作品','Plane · Work') },
-    { id: 'hobbies', emoji: '🦊', title: pick('技能图谱','Skills'), hint: pick('小狐狸 · 技术栈','Fox · Stack') },
+    { id: 'hobbies', emoji: '🔮', title: pick('技能图谱','Skills'), hint: pick('能量球 · 技术栈','Orb · Stack') },
     { id: 'contact', emoji: '🎧', title: pick('联络交流','Contact'), hint: pick('地月 · 社交渠道','Moon · Channels') },
   ];
 

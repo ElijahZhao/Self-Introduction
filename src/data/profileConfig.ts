@@ -178,10 +178,10 @@ export const INITIAL_PROFILE_CONFIG: ProfileConfig = {
         hobbies: {
           title: '专业技能 · 技术栈图谱',
           titleEn: 'Skills · Tech Stack Map',
-          subtitle: '🦊 灵动小狐狸 · 核心技术力量',
-          subtitleEn: '🦊 Agile fox · Core stack',
-          text: '如同敏锐矫健的小狐狸，我的核心技能覆盖现代全栈与前沿图形技术栈：\n• 核心语言：TypeScript、JavaScript (ESNext)、HTML5 / CSS3、Python\n• 前端框架：React 18 / 19、Next.js、Vue 3、Tailwind CSS\n• 3D 与图形：Three.js、GLSL 着色器、WebGL、Blender 低模调校\n• 后端与工程：Node.js、Express、RESTful API、Git / GitHub Actions、Docker',
-          textEn: 'Like a sharp, agile fox, my stack spans modern full-stack and cutting-edge graphics:\n• Languages: TypeScript, JavaScript (ESNext), HTML5 / CSS3, Python\n• Frontend: React 18 / 19, Next.js, Vue 3, Tailwind CSS\n• 3D & Graphics: Three.js, GLSL shaders, WebGL, Blender low-poly tuning\n• Backend & DevOps: Node.js, Express, REST, Git / GitHub Actions, Docker',
+          subtitle: '🔮 能量水晶球 · 核心技术力量',
+          subtitleEn: '🔮 Energy orb · Core stack',
+          text: '如同汇聚能量的水晶球，我的核心技能覆盖现代全栈与前沿图形技术栈：\n• 核心语言：TypeScript、JavaScript (ESNext)、HTML5 / CSS3、Python\n• 前端框架：React 18 / 19、Next.js、Vue 3、Tailwind CSS\n• 3D 与图形：Three.js、GLSL 着色器、WebGL、Blender 低模调校\n• 后端与工程：Node.js、Express、RESTful API、Git / GitHub Actions、Docker',
+          textEn: 'Like an energy-converging crystal orb, my stack spans modern full-stack and cutting-edge graphics:\n• Languages: TypeScript, JavaScript (ESNext), HTML5 / CSS3, Python\n• Frontend: React 18 / 19, Next.js, Vue 3, Tailwind CSS\n• 3D & Graphics: Three.js, GLSL shaders, WebGL, Blender low-poly tuning\n• Backend & DevOps: Node.js, Express, REST, Git / GitHub Actions, Docker',
           tags: ['💻 TypeScript', '⚛️ React', '🧊 Three.js', '🚀 Node.js', '🎨 Tailwind CSS'],
           tagsEn: ['💻 TypeScript', '⚛️ React', '🧊 Three.js', '🚀 Node.js', '🎨 Tailwind CSS'],
           links: [
@@ -256,8 +256,8 @@ export const INITIAL_PROFILE_CONFIG: ProfileConfig = {
         hobbies: {
           title: '开发环境与工具链',
           titleEn: 'Toolchain & Setup',
-          subtitle: '🦊 灵动小狐狸 · 极客利器',
-          subtitleEn: '🦊 Fox gear · Geek toolkit',
+          subtitle: '🔮 能量水晶球 · 极客利器',
+          subtitleEn: '🔮 Orb gear · Geek toolkit',
           text: '工欲善其事，必先利其器。我日常使用的工具链包括：VS Code、Cursor、Git、Docker、Vite 构建流水线、Three.js Inspector、Chrome Performance Profiler 等。',
           textEn: 'Sharpen the axe first. My daily toolkit: VS Code, Cursor, Git, Docker, Vite pipeline, Three.js Inspector, Chrome Performance Profiler.',
           tags: ['⌨️ VS Code', '🐳 Docker', '⚡ Vite', '🧪 Chrome DevTools'],
@@ -331,8 +331,8 @@ export const INITIAL_PROFILE_CONFIG: ProfileConfig = {
         hobbies: {
           title: '兴趣爱好与收藏',
           titleEn: 'Hobbies & Collections',
-          subtitle: '🦊 灵动小狐狸 · 充电清单',
-          subtitleEn: '🦊 Fox charging list',
+          subtitle: '🔮 能量水晶球 · 充电清单',
+          subtitleEn: '🔮 Orb charging list',
           text: '喜欢折腾客制化机械键盘、拼装乐高与机械模型，也喜欢体验各类富有艺术风格的独立游戏（如《星际拓荒》、《风之旅人》）。',
           textEn: "Custom mechanical keyboards, LEGO & model kits, and artistic indie games (Outer Wilds, Journey).",
           tags: ['🎮 独立游戏', '⌨️ 客制化键盘', '🧩 乐高与模型'],

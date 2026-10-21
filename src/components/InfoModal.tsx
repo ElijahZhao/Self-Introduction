@@ -35,7 +35,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
   const emojiMap: Record<OrbitModuleId, string> = {
     about: '🪐',
     projects: '✈️',
-    hobbies: '🦊',
+    hobbies: '🔮',
     contact: '🎧',
   };
 
