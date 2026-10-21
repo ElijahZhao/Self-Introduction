@@ -1180,6 +1180,10 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
             const size = b.getSize(new THREE.Vector3());
             const maxDim = Math.max(size.x, size.y, size.z) || 1;
             s.scale.setScalar(opts.scale / maxDim);
+            // Align feet to ground: Sketchfab exports use arbitrary anchors,
+            // so lift the mesh until its lowest point sits on y = baseY.
+            b.setFromObject(s);
+            s.position.y -= b.min.y;
             s.traverse((child) => {
               if ((child as THREE.Mesh).isMesh) {
                 child.castShadow = true;
@@ -1203,7 +1207,8 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
                 walk: walkClip ? mixer.clipAction(walkClip) : null,
                 state: 'idle',
                 path: opts.path,
-                targetIdx: 0,
+                targetIdx: 1, // start by walking toward the 2nd node — path[0]
+                // is the spawn point itself, so aiming at it would idle forever
                 speed: opts.speed,
                 baseY: opts.baseY,
                 timer: 1.5 + Math.random() * 2.5,
@@ -1240,13 +1245,16 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     const updateWanderers = (delta: number) => {
       const tmpDir = new THREE.Vector3();
       const entries = wanderersRef.current;
-      // Collision: keep clear of orbiting items (pedestal radius ~1.4, orbit
-      // rings at 2.15/3.6/3.82/4.55 etc. — wanderers live between the rings).
+      // Collision: only the 4 interactive orbit rings (Saturn 2.15, plane
+      // 3.82, contact 4.55, energy orb 3.6) are big enough to matter; purely
+      // decorative orbiters (r 4.7–6.55) stay clear of the safety band. Keep
+      // the clearance tight so wanderers mostly keep moving.
       const blockedByOrbit = (x: number, z: number) => {
         for (const g of orbitingItemsRef.current) {
+          if (!g.userData?.id) continue;
           const dx = g.position.x - x;
           const dz = g.position.z - z;
-          if (dx * dx + dz * dz < 0.85 * 0.85) return true;
+          if (dx * dx + dz * dz < 0.6 * 0.6) return true;
         }
         return false;
       };
@@ -1267,13 +1275,12 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
             const target = w.path[w.targetIdx];
             tmpDir.set(target.x - w.group.position.x, 0, target.z - w.group.position.z);
             if (tmpDir.length() > 0.05 && !blockedByOrbit(w.group.position.x, w.group.position.z)) {
-              w.targetIdx = (w.targetIdx + 1) % w.path.length;
               w.state = 'walk';
               w.walk?.reset().play();
               if (w.idle) w.idle.fadeOut(0.35);
             } else {
               // stay put a little longer when blocked or already at target
-              w.timer = 1.2;
+              w.timer = 0.6;
             }
           }
           if (w.noAnim) w.group.position.y = w.baseY + Math.sin((w.t ?? 0) * 1.6) * 0.015;
@@ -1290,13 +1297,13 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
             const o = entries[k];
             const dx = o.group.position.x - nx;
             const dz = o.group.position.z - nz;
-            if (dx * dx + dz * dz < 0.7 * 0.7) {
+            if (dx * dx + dz * dz < 0.55 * 0.55) {
               tooClose = true;
               break;
             }
           }
           if (dist < 0.06 || blockedByOrbit(nx, nz) || tooClose) {
-            stopAndRest(w, tooClose || blockedByOrbit(nx, nz) ? 1.0 : 0.5);
+            stopAndRest(w, tooClose || blockedByOrbit(nx, nz) ? 0.6 : 0.5);
             if (dist < 0.06) {
               // reached node: next time pick the following node
               w.targetIdx = (w.targetIdx + 1) % w.path.length;
