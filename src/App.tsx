@@ -312,7 +312,11 @@ const AppInner: React.FC = () => {
     if (isSpeaking) {
       audioEngine.stopVoice();
     } else {
-      audioEngine.playVoiceIntro(text, voiceKey ? `${voiceKey}-${lang}` : undefined);
+      audioEngine.playVoiceIntro(
+        text,
+        voiceKey ? `${voiceKey}-${lang}` : undefined,
+        (msg) => showToast(msg)
+      );
     }
   };
 

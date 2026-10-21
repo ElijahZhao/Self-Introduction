@@ -183,6 +183,21 @@ class AudioEngineService {
     this.notifySpeaking(false);
   }
 
+  // Cache reused <audio> elements so repeated plays start instantly and
+  // mobile browsers see an already-loaded resource inside the tap gesture.
+  private voiceCache = new Map<string, HTMLAudioElement>();
+
+  private ensureVoiceElement(key: string): HTMLAudioElement | null {
+    if (typeof window === 'undefined') return null;
+    const cached = this.voiceCache.get(key);
+    if (cached) return cached;
+    const url = resolveAssetUrl(`audio/voice/voice-${key}.mp3`);
+    const audio = new Audio(url);
+    audio.preload = 'auto';
+    this.voiceCache.set(key, audio);
+    return audio;
+  }
+
   public playVoiceIntro(
     textToRead: string,
     voiceKey?: string,
@@ -195,20 +210,28 @@ class AudioEngineService {
     }
 
     // Prefer bundled edge-tts voice clips (natural male voice) when a key exists.
-    if (voiceKey && typeof window !== 'undefined') {
-      // File convention: voice-{persona}-{module}-{lang}.mp3
-      const url = resolveAssetUrl(`audio/voice/voice-${voiceKey}.mp3`);
-      const audio = new Audio(url);
+    if (voiceKey) {
+      const audio = this.ensureVoiceElement(voiceKey);
       const fallback = () => {
-        audio.src = '';
+        if (audio) audio.pause();
         this.speakViaSynthesis(textToRead, onFallbackError);
       };
-      audio.onerror = fallback;
-      audio.onended = () => this.notifySpeaking(false);
-      audio.play().catch(() => {
+      if (!audio) {
+        this.speakViaSynthesis(textToRead, onFallbackError);
+        return;
+      }
+      const onError = () => {
         this.notifySpeaking(false);
         fallback();
-      });
+      };
+      audio.onerror = onError;
+      audio.onended = () => this.notifySpeaking(false);
+      try {
+        audio.currentTime = 0;
+      } catch (e) {
+        /* not seekable yet */
+      }
+      audio.play().catch(onError);
       this.notifySpeaking(true);
       return;
     }

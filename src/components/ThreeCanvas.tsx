@@ -1135,6 +1135,35 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       animFile: string | null,
       opts: { scale: number; path: THREE.Vector3[]; speed: number; baseY: number }
     ) => {
+      // The KayKit T-Pose idle keeps arms spread wide like a mannequin. Rewrite
+      // the idle clip's arm tracks so the character rests with arms naturally
+      // down (rotate each keyframe by a fixed delta in bone-local space).
+      const relaxIdleArms = (clip: THREE.AnimationClip) => {
+        const down = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI / 2));
+        const q = new THREE.Quaternion();
+        for (const track of clip.tracks) {
+          if (
+            !(
+              track.name.includes('upperarm') ||
+              track.name.includes('lowerarm') ||
+              track.name.includes('hand')
+            )
+          ) {
+            continue;
+          }
+          if (track instanceof THREE.QuaternionKeyframeTrack) {
+            for (let i = 0; i < track.values.length; i += 4) {
+              q.set(track.values[i], track.values[i + 1], track.values[i + 2], track.values[i + 3]);
+              q.multiply(down);
+              track.values[i] = q.x;
+              track.values[i + 1] = q.y;
+              track.values[i + 2] = q.z;
+              track.values[i + 3] = q.w;
+            }
+          }
+        }
+      };
+
       const charUrls = getModelCandidateUrls(`models/${charFile}`);
       const animUrls = animFile ? getModelCandidateUrls(`models/${animFile}`) : null;
       const loadChar = (idx = 0) => {
@@ -1159,6 +1188,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
                 clips.find((c) => c.name.toLowerCase().includes(kw)) || null;
               const idleClip = pickClip('t-pose') || pickClip('idle') || pickClip('jump_idle') || null;
               const walkClip = pickClip('walking_a') || pickClip('walk') || pickClip('running_a') || null;
+              if (idleClip) relaxIdleArms(idleClip);
               const p0 = opts.path[0];
               group.position.set(p0.x, opts.baseY, p0.z);
               group.add(s);
@@ -1202,29 +1232,69 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
     const updateWanderers = (delta: number) => {
       const tmpDir = new THREE.Vector3();
-      for (const w of wanderersRef.current) {
+      const entries = wanderersRef.current;
+      // Collision: keep clear of orbiting items (pedestal radius ~1.4, orbit
+      // rings at 2.15/3.6/3.82/4.55 etc. — wanderers live between the rings).
+      const blockedByOrbit = (x: number, z: number) => {
+        for (const g of orbitingItemsRef.current) {
+          const dx = g.position.x - x;
+          const dz = g.position.z - z;
+          if (dx * dx + dz * dz < 0.85 * 0.85) return true;
+        }
+        return false;
+      };
+      const stopAndRest = (w: WandererEntry, rest: number) => {
+        if (w.state === 'walk') {
+          w.state = 'idle';
+          w.walk?.fadeOut(0.35);
+          if (w.idle) w.idle.reset().fadeIn(0.35).play();
+        }
+        w.timer = rest;
+      };
+      for (let i = 0; i < entries.length; i++) {
+        const w = entries[i];
         if (w.state === 'idle') {
           w.timer -= delta;
           if (w.timer <= 0 && w.walk) {
-            w.targetIdx = (w.targetIdx + 1) % w.path.length;
-            w.state = 'walk';
-            w.walk.reset().play();
-            if (w.idle) w.idle.fadeOut(0.35);
+            const target = w.path[w.targetIdx];
+            tmpDir.set(target.x - w.group.position.x, 0, target.z - w.group.position.z);
+            if (tmpDir.length() > 0.05 && !blockedByOrbit(w.group.position.x, w.group.position.z)) {
+              w.targetIdx = (w.targetIdx + 1) % w.path.length;
+              w.state = 'walk';
+              w.walk.reset().play();
+              if (w.idle) w.idle.fadeOut(0.35);
+            } else {
+              // stay put a little longer when blocked or already at target
+              w.timer = 1.2;
+            }
           }
         } else if (w.walk) {
           const target = w.path[w.targetIdx];
           tmpDir.set(target.x - w.group.position.x, 0, target.z - w.group.position.z);
           const dist = tmpDir.length();
-          if (dist < 0.06) {
-            w.state = 'idle';
-            w.walk.fadeOut(0.35);
-            if (w.idle) w.idle.reset().fadeIn(0.35).play();
-            w.timer = 2.4 + Math.random() * 3.4;
+          const nx = w.group.position.x + tmpDir.normalize().x * Math.min(w.speed * delta, dist);
+          const nz = w.group.position.z + tmpDir.z * Math.min(w.speed * delta, dist);
+          // mutual exclusion: other wanderer too close?
+          let tooClose = false;
+          for (let k = 0; k < entries.length; k++) {
+            if (k === i) continue;
+            const o = entries[k];
+            const dx = o.group.position.x - nx;
+            const dz = o.group.position.z - nz;
+            if (dx * dx + dz * dz < 0.7 * 0.7) {
+              tooClose = true;
+              break;
+            }
+          }
+          if (dist < 0.06 || blockedByOrbit(nx, nz) || tooClose) {
+            stopAndRest(w, tooClose || blockedByOrbit(nx, nz) ? 1.0 : 0.5);
+            if (dist < 0.06) {
+              // reached node: next time pick the following node
+              w.targetIdx = (w.targetIdx + 1) % w.path.length;
+            }
           } else {
-            const step = Math.min(w.speed * delta, dist);
-            tmpDir.normalize().multiplyScalar(step);
-            w.group.position.x += tmpDir.x;
-            w.group.position.z += tmpDir.z;
+            w.group.position.x = nx;
+            w.group.position.z = nz;
             const yaw = Math.atan2(tmpDir.x, tmpDir.z);
             let dy = yaw - w.group.rotation.y;
             while (dy > Math.PI) dy -= Math.PI * 2;
@@ -1361,16 +1431,18 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
     // Wandering blocky characters — Knight (main walker) + Mage (casual stroller),
     // both rigged to the same KayKit Rig_Medium skeleton (matching bone names).
+    // Paths stay in the 2.5–3.2 "safety band" between orbit rings (Saturn 2.15,
+    // energy orb 3.6 / plane 3.82) and avoid the pedestal (r≈1.4).
     const knightWanderGroup = new THREE.Group();
     loadWanderer(knightWanderGroup, 'Knight.glb', 'Rig_Medium_MovementBasic.glb', {
       scale: 1.05,
       baseY: 0,
       speed: 0.55,
       path: [
-        new THREE.Vector3(3.6, 0, 1.6),
-        new THREE.Vector3(3.0, 0, -2.1),
-        new THREE.Vector3(-3.3, 0, -2.3),
-        new THREE.Vector3(-3.7, 0, 1.4),
+        new THREE.Vector3(2.6, 0, 1.0),
+        new THREE.Vector3(2.4, 0, -1.6),
+        new THREE.Vector3(-2.7, 0, -1.7),
+        new THREE.Vector3(-2.8, 0, 1.0),
       ],
     });
     scene.add(knightWanderGroup);
@@ -1381,10 +1453,10 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       baseY: 0,
       speed: 0.4,
       path: [
-        new THREE.Vector3(2.6, 0, 0.9),
-        new THREE.Vector3(1.6, 0, -2.4),
-        new THREE.Vector3(-2.7, 0, -1.4),
-        new THREE.Vector3(-2.2, 0, 1.9),
+        new THREE.Vector3(-2.2, 0, 1.8),
+        new THREE.Vector3(-2.3, 0, -1.0),
+        new THREE.Vector3(2.3, 0, -1.4),
+        new THREE.Vector3(2.4, 0, 1.2),
       ],
     });
     scene.add(mageWanderGroup);
