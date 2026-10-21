@@ -9,6 +9,27 @@ export interface ActionLink {
   copyText?: string;
 }
 
+export interface ProjectItem {
+  name: string;
+  nameEn?: string;
+  tagline: string;
+  taglineEn?: string;
+  desc: string;
+  descEn?: string;
+  tech: string[];
+  techEn?: string[];
+  highlights: string[];
+  highlightsEn?: string[];
+  demoUrl?: string;
+  repoUrl: string;
+  accent?: string;
+}
+
+export interface OtherRepo {
+  name: string;
+  url: string;
+}
+
 export interface ModuleData {
   title: string;
   titleEn?: string;
@@ -19,6 +40,8 @@ export interface ModuleData {
   tags: string[];
   tagsEn?: string[];
   links: ActionLink[];
+  projectList?: ProjectItem[];
+  otherRepos?: OtherRepo[];
 }
 
 export interface OutfitConfig {

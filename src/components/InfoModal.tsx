@@ -108,6 +108,80 @@ export const InfoModal: React.FC<InfoModalProps> = ({
             {pick(mod.text, mod.textEn || mod.text)}
           </p>
 
+          {/* Project Cards (projects module only) */}
+          {moduleId === 'projects' && mod.projectList && mod.projectList.length > 0 && (
+            <div className="space-y-3 pt-1">
+              {mod.projectList.map((proj, idx) => (
+                <div
+                  key={idx}
+                  className={`rounded-xl p-3.5 border-l-4 shadow-xs ${
+                    isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white/70 border-slate-200'
+                  }`}
+                  style={{ borderLeftColor: proj.accent || '#5ba8ff' }}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h3 className={`text-sm font-bold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                        {pick(proj.name, proj.nameEn || proj.name)}
+                      </h3>
+                      <p className="text-[11px] font-medium mt-0.5" style={{ color: proj.accent || '#5ba8ff' }}>
+                        {pick(proj.tagline, proj.taglineEn || proj.tagline)}
+                      </p>
+                    </div>
+                  </div>
+                  <p className={`text-xs mt-2 leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                    {pick(proj.desc, proj.descEn || proj.desc)}
+                  </p>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {(proj.techEn && lang === 'en' ? proj.techEn : proj.tech).map((t, i) => (
+                      <span key={i} className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                        isDark ? 'bg-slate-700/80 text-slate-300' : 'bg-slate-100 text-slate-600'
+                      }`}>{t}</span>
+                    ))}
+                  </div>
+                  <ul className="mt-2 space-y-0.5">
+                    {(proj.highlightsEn && lang === 'en' ? proj.highlightsEn : proj.highlights).map((h, i) => (
+                      <li key={i} className={`text-[11px] flex gap-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        <span style={{ color: proj.accent || '#5ba8ff' }}>▸</span>
+                        <span>{h}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="flex flex-wrap gap-1.5 mt-2.5">
+                    {proj.demoUrl && (
+                      <a href={proj.demoUrl} target="_blank" rel="noopener noreferrer"
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-white transition hover:opacity-90 cursor-pointer"
+                        style={{ background: proj.accent || '#5ba8ff' }}>
+                        🔗 {pick('在线 Demo', 'Live Demo')}
+                      </a>
+                    )}
+                    <a href={proj.repoUrl} target="_blank" rel="noopener noreferrer"
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer ${
+                        isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-800 text-white hover:bg-slate-700'
+                      }`}>
+                      🐙 {pick('源码', 'Source')}
+                    </a>
+                  </div>
+                </div>
+              ))}
+              {mod.otherRepos && mod.otherRepos.length > 0 && (
+                <div className={`rounded-xl p-3 mt-1 ${isDark ? 'bg-slate-800/40' : 'bg-slate-50/80'}`}>
+                  <p className={`text-[11px] font-semibold mb-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    {pick('📦 其他仓库…', '📦 Other repositories…')}
+                  </p>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1">
+                    {mod.otherRepos.map((r, i) => (
+                      <a key={i} href={r.url} target="_blank" rel="noopener noreferrer"
+                        className={`text-[11px] underline-offset-2 hover:underline cursor-pointer ${isDark ? 'text-slate-400 hover:text-sky-300' : 'text-slate-500 hover:text-sky-600'}`}>
+                        {r.name}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Tags */}
           {mod.tags && mod.tags.length > 0 && (
             <div id="modal-tags" className="flex flex-wrap gap-1.5 pt-1">
