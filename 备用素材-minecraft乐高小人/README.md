@@ -1,7 +1,7 @@
 # 备用素材 · Minecraft/乐高风格小人物
 
-> 用途：Self-Introduction 3D 展台未来"场景走动互动小人"候选素材。
-> 当前状态：**仅下载备用，未接入场景**（用户拍板：问题1-3完成后才考虑接入）。
+> 用途：Self-Introduction 3D 展台"场景走动互动小人"素材。
+> 当前状态：**Knight（骑士）与 Mage（法师）已接入场景**（漫游方块小人，绕展台折线路径 idle↔walk 状态机，动画取自 Rig_Medium_MovementBasic 同 rig 骨骼）；其余素材仍为备用。
 
 ## 素材清单（9 个 GLB，共 8.1MB）
 

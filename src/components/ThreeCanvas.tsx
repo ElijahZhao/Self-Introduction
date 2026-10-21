@@ -29,6 +29,19 @@ interface ActiveShockwave {
   maxScale: number;
 }
 
+interface WandererEntry {
+  group: THREE.Group;
+  mixer: THREE.AnimationMixer;
+  idle: THREE.AnimationAction | null;
+  walk: THREE.AnimationAction | null;
+  state: 'idle' | 'walk';
+  path: THREE.Vector3[];
+  targetIdx: number;
+  speed: number;
+  baseY: number;
+  timer: number;
+}
+
 interface ActivePunch {
   group: THREE.Group;
   baseScale: THREE.Vector3;
@@ -138,6 +151,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
   const orbitingItemsRef = useRef<THREE.Group[]>([]);
   const orbitRingsRef = useRef<THREE.Object3D[]>([]);
+  const wanderersRef = useRef<WandererEntry[]>([]);
   const rippleRingsRef = useRef<{ mesh: THREE.Mesh; active: boolean; age: number; delay: number }[]>([]);
   const ambientParticlesRef = useRef<{
     group: THREE.Group | null;
@@ -659,6 +673,10 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       'models/decor-astronaut.glb',
       'models/decor-miner.glb',
       'models/decor-meteor.glb',
+      'models/Knight.glb',
+      'models/Mage.glb',
+      'models/Rig_Medium_MovementBasic.glb',
+      'models/Soldier.glb',
     ];
     criticalModelsRef.current = new Set([
       characterPath,
@@ -1106,6 +1124,118 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       load();
     };
 
+    // -------------------------------------------------------------------------
+    // Wandering blocky characters (KayKit CC0 + Rig_Medium animations, same rig
+    // bone names so animation clips retarget cleanly onto the character).
+    // They amble along a polygon around the pedestal: idle ↔ walk state machine.
+    // -------------------------------------------------------------------------
+    const loadWanderer = (
+      group: THREE.Group,
+      charFile: string,
+      animFile: string | null,
+      opts: { scale: number; path: THREE.Vector3[]; speed: number; baseY: number }
+    ) => {
+      const charUrls = getModelCandidateUrls(`models/${charFile}`);
+      const animUrls = animFile ? getModelCandidateUrls(`models/${animFile}`) : null;
+      const loadChar = (idx = 0) => {
+        if (idx >= charUrls.length) return;
+        gltfOrbitLoader.load(
+          charUrls[idx],
+          (charGltf) => {
+            const s = charGltf.scene;
+            const b = new THREE.Box3().setFromObject(s);
+            const size = b.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z) || 1;
+            s.scale.setScalar(opts.scale / maxDim);
+            s.traverse((child) => {
+              if ((child as THREE.Mesh).isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+              }
+            });
+            const finish = (clips: THREE.AnimationClip[]) => {
+              const mixer = new THREE.AnimationMixer(s);
+              const pickClip = (kw: string) =>
+                clips.find((c) => c.name.toLowerCase().includes(kw)) || null;
+              const idleClip = pickClip('t-pose') || pickClip('idle') || pickClip('jump_idle') || null;
+              const walkClip = pickClip('walking_a') || pickClip('walk') || pickClip('running_a') || null;
+              const p0 = opts.path[0];
+              group.position.set(p0.x, opts.baseY, p0.z);
+              group.add(s);
+              const entry: WandererEntry = {
+                group,
+                mixer,
+                idle: idleClip ? mixer.clipAction(idleClip) : null,
+                walk: walkClip ? mixer.clipAction(walkClip) : null,
+                state: 'idle',
+                path: opts.path,
+                targetIdx: 0,
+                speed: opts.speed,
+                baseY: opts.baseY,
+                timer: 1.5 + Math.random() * 2.5,
+              };
+              if (entry.idle) entry.idle.play();
+              wanderersRef.current.push(entry);
+              reportModelArrived(`models/${charFile}`);
+            };
+            if (animUrls) {
+              const loadAnim = (ai = 0) => {
+                if (ai >= animUrls.length) { finish(charGltf.animations || []); return; }
+                gltfOrbitLoader.load(
+                  animUrls[ai],
+                  (animGltf) => finish(animGltf.animations || []),
+                  undefined,
+                  () => loadAnim(ai + 1)
+                );
+              };
+              loadAnim();
+            } else {
+              finish(charGltf.animations || []);
+            }
+          },
+          undefined,
+          () => loadChar(idx + 1)
+        );
+      };
+      loadChar();
+    };
+
+    const updateWanderers = (delta: number) => {
+      const tmpDir = new THREE.Vector3();
+      for (const w of wanderersRef.current) {
+        if (w.state === 'idle') {
+          w.timer -= delta;
+          if (w.timer <= 0 && w.walk) {
+            w.targetIdx = (w.targetIdx + 1) % w.path.length;
+            w.state = 'walk';
+            w.walk.reset().play();
+            if (w.idle) w.idle.fadeOut(0.35);
+          }
+        } else if (w.walk) {
+          const target = w.path[w.targetIdx];
+          tmpDir.set(target.x - w.group.position.x, 0, target.z - w.group.position.z);
+          const dist = tmpDir.length();
+          if (dist < 0.06) {
+            w.state = 'idle';
+            w.walk.fadeOut(0.35);
+            if (w.idle) w.idle.reset().fadeIn(0.35).play();
+            w.timer = 2.4 + Math.random() * 3.4;
+          } else {
+            const step = Math.min(w.speed * delta, dist);
+            tmpDir.normalize().multiplyScalar(step);
+            w.group.position.x += tmpDir.x;
+            w.group.position.z += tmpDir.z;
+            const yaw = Math.atan2(tmpDir.x, tmpDir.z);
+            let dy = yaw - w.group.rotation.y;
+            while (dy > Math.PI) dy -= Math.PI * 2;
+            while (dy < -Math.PI) dy += Math.PI * 2;
+            w.group.rotation.y += dy * Math.min(1, delta * 8);
+          }
+        }
+        w.mixer.update(delta);
+      }
+    };
+
     // Tiny planet (outer-most orbit)
     const tinyPlanetGroup = new THREE.Group();
     loadDecorativeOrb(tinyPlanetGroup, 'orb-planet_5-transformed.glb', 0.4);
@@ -1228,6 +1358,36 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       baseY: 0.35,
       orientToTangent: true,
     });
+
+    // Wandering blocky characters — Knight (main walker) + Mage (casual stroller),
+    // both rigged to the same KayKit Rig_Medium skeleton (matching bone names).
+    const knightWanderGroup = new THREE.Group();
+    loadWanderer(knightWanderGroup, 'Knight.glb', 'Rig_Medium_MovementBasic.glb', {
+      scale: 1.05,
+      baseY: 0,
+      speed: 0.55,
+      path: [
+        new THREE.Vector3(3.6, 0, 1.6),
+        new THREE.Vector3(3.0, 0, -2.1),
+        new THREE.Vector3(-3.3, 0, -2.3),
+        new THREE.Vector3(-3.7, 0, 1.4),
+      ],
+    });
+    scene.add(knightWanderGroup);
+
+    const mageWanderGroup = new THREE.Group();
+    loadWanderer(mageWanderGroup, 'Mage.glb', 'Rig_Medium_MovementBasic.glb', {
+      scale: 1.0,
+      baseY: 0,
+      speed: 0.4,
+      path: [
+        new THREE.Vector3(2.6, 0, 0.9),
+        new THREE.Vector3(1.6, 0, -2.4),
+        new THREE.Vector3(-2.7, 0, -1.4),
+        new THREE.Vector3(-2.2, 0, 1.9),
+      ],
+    });
+    scene.add(mageWanderGroup);
 
     const glowSphereGroup = new THREE.Group();
     loadDecorativeOrb(glowSphereGroup, 'orb-pickup_sphere-transformed.glb', 0.55);
@@ -1545,6 +1705,9 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       if (mixerRef.current) {
         mixerRef.current.update(delta);
       }
+
+      // Update wandering blocky characters (idle ↔ walk along their path)
+      updateWanderers(delta);
 
       // Smooth rotation dampening
       currentRotationYRef.current += (targetRotationYRef.current - currentRotationYRef.current) * 0.11;
