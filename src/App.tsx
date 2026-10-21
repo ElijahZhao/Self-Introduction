@@ -106,13 +106,36 @@ const AppInner: React.FC = () => {
   useEffect(() => {
     const onFsChange = () => setImmersive(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', onFsChange);
-    return () => document.removeEventListener('fullscreenchange', onFsChange);
-  }, []);
+    // Esc also exits CSS-simulated immersive mode (native fullscreen handles Esc itself)
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && immersive && !document.fullscreenElement) {
+        setImmersive(false);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [immersive]);
   const handleToggleFullscreen = () => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
+    const fsApiAvailable = typeof document.documentElement.requestFullscreen === 'function';
+    if (immersive) {
+      // Exit: leave native fullscreen if active, then close immersive CSS mode
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+      setImmersive(false);
     } else {
-      document.documentElement.requestFullscreen().catch(() => {});
+      // Enter: prefer native Fullscreen API; fall back to pure-CSS immersive
+      // mode when the API is unavailable (iOS Safari) or the call is rejected.
+      if (fsApiAvailable) {
+        document.documentElement.requestFullscreen().catch(() => {
+          setImmersive(true);
+        });
+      } else {
+        setImmersive(true);
+      }
     }
   };
 
