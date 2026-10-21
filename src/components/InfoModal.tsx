@@ -155,6 +155,13 @@ export const InfoModal: React.FC<InfoModalProps> = ({
                         🔗 {pick('在线 Demo', 'Live Demo')}
                       </a>
                     )}
+                    {proj.demoUrl2 && (
+                      <a href={proj.demoUrl2} target="_blank" rel="noopener noreferrer"
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-white transition hover:opacity-90 cursor-pointer"
+                        style={{ background: proj.accent || '#5ba8ff', opacity: 0.85 }}>
+                        🔬 {pick('研究 Demo', 'Research Demo')}
+                      </a>
+                    )}
                     <a href={proj.repoUrl} target="_blank" rel="noopener noreferrer"
                       className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer ${
                         isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-800 text-white hover:bg-slate-700'
