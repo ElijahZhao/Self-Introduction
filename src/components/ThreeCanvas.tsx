@@ -1218,6 +1218,31 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
               };
               freezeBoneY(idleClip);
               freezeBoneY(walkClip);
+              // KayKit walk clips swing the legs wide (cartoon stride), which
+              // visually lifts the feet off the floor mid-stride and reads as
+              // "floating". Scale every leg/foot rotation toward identity by
+              // 60% so the stride is shorter and the feet stay planted.
+              if (walkClip) {
+                for (const track of walkClip.tracks) {
+                  if (!(track instanceof THREE.QuaternionKeyframeTrack)) continue;
+                  const m = /^([^.]+)\.quaternion$/.exec(track.name);
+                  if (!m || !/upperleg|lowerleg|foot|toes/.test(m[1])) continue;
+                  for (let i = 0; i < track.values.length; i += 4) {
+                    const ax = track.values[i], ay = track.values[i + 1], az = track.values[i + 2], aw = track.values[i + 3];
+                    const sign = aw < 0 ? -1 : 1;
+                    const a = Math.acos(Math.min(1, Math.abs(aw))) * 2;
+                    if (a < 1e-4) continue;
+                    const s = Math.sin(a / 2);
+                    if (s < 1e-4) continue;
+                    const a2 = a * 0.6;
+                    const s2 = Math.sin(a2 / 2);
+                    track.values[i] = (ax / s) * s2 * sign;
+                    track.values[i + 1] = (ay / s) * s2 * sign;
+                    track.values[i + 2] = (az / s) * s2 * sign;
+                    track.values[i + 3] = Math.cos(a2 / 2) * sign;
+                  }
+                }
+              }
               const p0 = opts.path[0];
               group.position.set(p0.x, opts.baseY, p0.z);
               group.add(s);
@@ -1495,11 +1520,15 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       scale: 0.8,
       baseY: 0,
       speed: 0.55,
+      // Wide patrol band r≈2.6–3.8 (east half, x>0) so the knight roams a
+      // much larger arc instead of hugging the inner orbit ring.
       path: [
-        new THREE.Vector3(3.1, 0, 0.5),
-        new THREE.Vector3(3.0, 0, -1.2),
-        new THREE.Vector3(2.8, 0, -1.4),
-        new THREE.Vector3(2.9, 0, 1.1),
+        new THREE.Vector3(3.7, 0, 0.6),
+        new THREE.Vector3(3.45, 0, -0.9),
+        new THREE.Vector3(2.9, 0, -1.5),
+        new THREE.Vector3(2.7, 0, -0.6),
+        new THREE.Vector3(2.85, 0, 0.9),
+        new THREE.Vector3(3.4, 0, 1.5),
       ],
     });
     scene.add(knightWanderGroup);
@@ -1509,11 +1538,14 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       scale: 0.78,
       baseY: 0,
       speed: 0.4,
+      // Wide patrol band r≈2.65–3.7 (west half, x<0), mirrored to the knight.
       path: [
-        new THREE.Vector3(-2.8, 0, 0.9),
-        new THREE.Vector3(-2.5, 0, -1.6),
-        new THREE.Vector3(-2.9, 0, -0.5),
-        new THREE.Vector3(-2.7, 0, 1.3),
+        new THREE.Vector3(-3.6, 0, 0.7),
+        new THREE.Vector3(-3.3, 0, -1.1),
+        new THREE.Vector3(-2.75, 0, -1.5),
+        new THREE.Vector3(-2.6, 0, -0.5),
+        new THREE.Vector3(-2.7, 0, 0.9),
+        new THREE.Vector3(-3.3, 0, 1.4),
       ],
     });
     scene.add(mageWanderGroup);
