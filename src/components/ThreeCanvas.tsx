@@ -45,8 +45,6 @@ interface WandererEntry {
   noAnim?: boolean;
   /** Accumulated time for procedural bob. */
   t?: number;
-  /** Frame counter for the foot-grounding calibration (every 3rd frame). */
-  fc?: number;
 }
 
 interface ActivePunch {
@@ -1199,20 +1197,27 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
               let walkClip = pickClip('walking_a') || pickClip('walk') || pickClip('running_a') || null;
               const mixer: THREE.AnimationMixer | null = new THREE.AnimationMixer(s);
               if (idleClip) relaxIdleArms(idleClip);
-              // KayKit walk clips carry a hip-height curve (0.32–0.38) that
-              // lifts the whole skeleton off the ground while walking. GLTFLoader
-              // builds the track as a vector track `hips.position` (not a split
-              // `hips.position[y]`), so pin its Y component to the bind-pose
-              // height (0.4057) to keep the feet on the floor; leg swing
-              // (rotation) is unaffected.
-              if (walkClip) {
-                const HIP_Y = 0.4057;
-                for (const track of walkClip.tracks) {
-                  if (track.name === 'hips.position' && track instanceof THREE.VectorKeyframeTrack) {
-                    for (let i = 0; i < track.values.length; i += 3) track.values[i + 1] = HIP_Y;
+              // Freeze every position-track Y component at its bind-pose
+              // height. KayKit clips lift the hips/root while walking (the
+              // track values are offsets on top of the bind pose, so pinning
+              // hips alone isn't enough) — freezing all bone Y keeps the
+              // skeleton glued to the floor while rotations (leg swing, arm
+              // sway) animate normally.
+              const freezeBoneY = (clip: THREE.AnimationClip | null) => {
+                if (!clip) return;
+                for (const track of clip.tracks) {
+                  if (!(track instanceof THREE.VectorKeyframeTrack)) continue;
+                  const m = /^([^.]+)\.position$/.exec(track.name);
+                  if (!m) continue;
+                  const bone = s.getObjectByName(m[1]);
+                  if (bone) {
+                    const bindY = bone.position.y;
+                    for (let i = 1; i < track.values.length; i += 3) track.values[i] = bindY;
                   }
                 }
-              }
+              };
+              freezeBoneY(idleClip);
+              freezeBoneY(walkClip);
               const p0 = opts.path[0];
               group.position.set(p0.x, opts.baseY, p0.z);
               group.add(s);
@@ -1261,7 +1266,6 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
     const updateWanderers = (delta: number) => {
       const tmpDir = new THREE.Vector3();
-      const tmpV = new THREE.Vector3();
       const entries = wanderersRef.current;
       // Collision: only the 4 interactive orbit rings (Saturn 2.15, plane
       // 3.82, contact 4.55, energy orb 3.6) are big enough to matter; purely
@@ -1341,25 +1345,6 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           if (w.noAnim) w.group.position.y = w.baseY + Math.sin((w.t ?? 0) * 9) * 0.06;
         }
         w.mixer.update(delta);
-        // Foot grounding via the hips bone: Box3.setFromObject only reads
-        // bind-pose vertices (skinning is invisible to it), so instead anchor
-        // by the animated hips bone — in bind pose the feet sit at y=0 with
-        // hips at 0.4057 model units. Every 2nd frame nudge group.position.y
-        // so the feet always rest on baseY.
-        const s = w.group.children[0];
-        if (s && (w.idle || w.walk)) {
-          w.fc = (w.fc ?? 0) + 1;
-          if (w.fc % 2 === 0) {
-            const hips = s.getObjectByName('hips');
-            if (hips) {
-              hips.updateWorldMatrix(true, false);
-              hips.getWorldPosition(tmpV);
-              const footY = tmpV.y - 0.4057 * (s.scale.y || 1);
-              const drift = w.baseY - footY;
-              if (Math.abs(drift) > 0.004) w.group.position.y += drift;
-            }
-          }
-        }
       }
     };
 
