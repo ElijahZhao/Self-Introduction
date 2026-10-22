@@ -17,6 +17,7 @@ import {
   BuiltinModelId,
 } from '../types';
 import { audioEngine } from '../services/audioEngine';
+import { rigBlockyModel, type RigKind } from '../services/blockyRig';
 import { createContactShadowTexture } from '../utils/faceTextureGenerator';
 
 interface ActiveShockwave {
@@ -1137,7 +1138,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       group: THREE.Group,
       charFile: string,
       animFile: string | null,
-      opts: { scale: number; path: THREE.Vector3[]; speed: number; baseY: number }
+      opts: { scale: number; path: THREE.Vector3[]; speed: number; baseY: number; rig?: RigKind }
     ) => {
       // The KayKit T-Pose idle keeps arms spread wide like a mannequin. Rewrite
       // the idle clip's arm tracks so the character rests with arms naturally
@@ -1191,11 +1192,22 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
               }
             });
             const finish = (clips: THREE.AnimationClip[]) => {
-              const mixer = new THREE.AnimationMixer(s);
               const pickClip = (kw: string) =>
                 clips.find((c) => c.name.toLowerCase().includes(kw)) || null;
-              const idleClip = pickClip('t-pose') || pickClip('idle') || pickClip('jump_idle') || null;
-              const walkClip = pickClip('walking_a') || pickClip('walk') || pickClip('running_a') || null;
+              let idleClip = pickClip('t-pose') || pickClip('idle') || pickClip('jump_idle') || null;
+              let walkClip = pickClip('walking_a') || pickClip('walk') || pickClip('running_a') || null;
+              let mixer: THREE.AnimationMixer | null = null;
+              if (!idleClip && !walkClip && opts.rig) {
+                // Static merged GLB (e.g. Minecraft set): synthesize bones +
+                // skinning + walk/idle clips in code.
+                const rig = rigBlockyModel(s, opts.rig);
+                if (rig) {
+                  mixer = new THREE.AnimationMixer(rig.skeletonRoot);
+                  idleClip = rig.idleClip;
+                  walkClip = rig.walkClip;
+                }
+              }
+              if (!mixer) mixer = new THREE.AnimationMixer(s);
               if (idleClip) relaxIdleArms(idleClip);
               const p0 = opts.path[0];
               group.position.set(p0.x, opts.baseY, p0.z);
@@ -1456,6 +1468,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       scale: 0.85,
       baseY: 0,
       speed: 0.5,
+      rig: 'human',
       path: [
         new THREE.Vector3(2.6, 0, 1.0),
         new THREE.Vector3(2.4, 0, -1.6),
@@ -1470,6 +1483,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       scale: 0.8,
       baseY: 0,
       speed: 0.35,
+      rig: 'human',
       path: [
         new THREE.Vector3(-2.2, 0, 1.8),
         new THREE.Vector3(-2.3, 0, -1.0),
@@ -1484,6 +1498,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       scale: 0.55,
       baseY: 0,
       speed: 0.7,
+      rig: 'quadruped',
       path: [
         new THREE.Vector3(1.3, 0, 2.1),
         new THREE.Vector3(0.5, 0, -2.4),
