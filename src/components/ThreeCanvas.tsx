@@ -45,6 +45,8 @@ interface WandererEntry {
   noAnim?: boolean;
   /** Accumulated time for procedural bob. */
   t?: number;
+  /** Frame counter for the foot-grounding calibration (every 3rd frame). */
+  fc?: number;
 }
 
 interface ActivePunch {
@@ -1336,6 +1338,19 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           if (w.noAnim) w.group.position.y = w.baseY + Math.sin((w.t ?? 0) * 9) * 0.06;
         }
         w.mixer.update(delta);
+        // Dynamic foot grounding: some KayKit clips still carry residual
+        // skeleton lift, so every 3rd frame measure the real lowest vertex
+        // (world-space) and nudge the group so the feet always touch the floor.
+        const s = w.group.children[0];
+        if (s && (w.idle || w.walk)) {
+          w.fc = (w.fc ?? 0) + 1;
+          if (w.fc % 3 === 0) {
+            const bb = new THREE.Box3().setFromObject(s);
+            const footY = bb.min.y - w.group.position.y;
+            const drift = w.baseY - footY;
+            if (Math.abs(drift) > 0.006) w.group.position.y += drift;
+          }
+        }
       }
     };
 
