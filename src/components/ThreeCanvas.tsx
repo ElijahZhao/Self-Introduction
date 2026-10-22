@@ -1197,6 +1197,18 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
               let walkClip = pickClip('walking_a') || pickClip('walk') || pickClip('running_a') || null;
               const mixer: THREE.AnimationMixer | null = new THREE.AnimationMixer(s);
               if (idleClip) relaxIdleArms(idleClip);
+              // KayKit walk clips carry a hip-height curve (0.32–0.38) that
+              // lifts the whole skeleton off the ground while walking. Pin the
+              // hip Y track to the bind-pose height (0.4057) so feet stay on
+              // the floor; leg swing (rotation) is unaffected.
+              if (walkClip) {
+                const HIP_Y = 0.4057;
+                for (const track of walkClip.tracks) {
+                  if (track.name === 'hips.position[y]' && track instanceof THREE.NumberKeyframeTrack) {
+                    for (let i = 0; i < track.values.length; i++) track.values[i] = HIP_Y;
+                  }
+                }
+              }
               const p0 = opts.path[0];
               group.position.set(p0.x, opts.baseY, p0.z);
               group.add(s);
@@ -1471,7 +1483,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
     const knightWanderGroup = new THREE.Group();
     loadWanderer(knightWanderGroup, 'Knight.glb', 'Rig_Medium_MovementBasic.glb', {
-      scale: 1.05,
+      scale: 0.8,
       baseY: 0,
       speed: 0.55,
       path: [
@@ -1485,7 +1497,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
     const mageWanderGroup = new THREE.Group();
     loadWanderer(mageWanderGroup, 'Mage.glb', 'Rig_Medium_MovementBasic.glb', {
-      scale: 1.0,
+      scale: 0.78,
       baseY: 0,
       speed: 0.4,
       path: [
