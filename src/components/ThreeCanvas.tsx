@@ -1197,49 +1197,15 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
               let walkClip = pickClip('walking_a') || pickClip('walk') || pickClip('running_a') || null;
               const mixer: THREE.AnimationMixer | null = new THREE.AnimationMixer(s);
               if (idleClip) relaxIdleArms(idleClip);
-              // Freeze every position-track Y component at its bind-pose
-              // height. KayKit clips lift the hips/root while walking (the
-              // track values are offsets on top of the bind pose, so pinning
-              // hips alone isn't enough) — freezing all bone Y keeps the
-              // skeleton glued to the floor while rotations (leg swing, arm
-              // sway) animate normally.
-              const freezeBoneY = (clip: THREE.AnimationClip | null) => {
-                if (!clip) return;
-                for (const track of clip.tracks) {
-                  if (!(track instanceof THREE.VectorKeyframeTrack)) continue;
-                  const m = /^([^.]+)\.position$/.exec(track.name);
-                  if (!m) continue;
-                  const bone = s.getObjectByName(m[1]);
-                  if (bone) {
-                    const bindY = bone.position.y;
-                    for (let i = 1; i < track.values.length; i += 3) track.values[i] = bindY;
-                  }
-                }
-              };
-              freezeBoneY(idleClip);
-              freezeBoneY(walkClip);
-              // KayKit walk clips swing the legs wide (cartoon stride), which
-              // visually lifts the feet off the floor mid-stride and reads as
-              // "floating". Scale every leg/foot rotation toward identity by
-              // 60% so the stride is shorter and the feet stay planted.
+              // KayKit walk clips carry a hip-height curve (0.32–0.38) that
+              // lifts the whole skeleton off the ground while walking. Pin the
+              // hip Y track to the bind-pose height (0.4057) so feet stay on
+              // the floor; leg swing (rotation) is unaffected.
               if (walkClip) {
+                const HIP_Y = 0.4057;
                 for (const track of walkClip.tracks) {
-                  if (!(track instanceof THREE.QuaternionKeyframeTrack)) continue;
-                  const m = /^([^.]+)\.quaternion$/.exec(track.name);
-                  if (!m || !/upperleg|lowerleg|foot|toes/.test(m[1])) continue;
-                  for (let i = 0; i < track.values.length; i += 4) {
-                    const ax = track.values[i], ay = track.values[i + 1], az = track.values[i + 2], aw = track.values[i + 3];
-                    const sign = aw < 0 ? -1 : 1;
-                    const a = Math.acos(Math.min(1, Math.abs(aw))) * 2;
-                    if (a < 1e-4) continue;
-                    const s = Math.sin(a / 2);
-                    if (s < 1e-4) continue;
-                    const a2 = a * 0.6;
-                    const s2 = Math.sin(a2 / 2);
-                    track.values[i] = (ax / s) * s2 * sign;
-                    track.values[i + 1] = (ay / s) * s2 * sign;
-                    track.values[i + 2] = (az / s) * s2 * sign;
-                    track.values[i + 3] = Math.cos(a2 / 2) * sign;
+                  if (track.name === 'hips.position[y]' && track instanceof THREE.NumberKeyframeTrack) {
+                    for (let i = 0; i < track.values.length; i++) track.values[i] = HIP_Y;
                   }
                 }
               }
