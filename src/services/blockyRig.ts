@@ -77,8 +77,13 @@ function buildSkeleton(
 function classifyHuman(p: THREE.Vector3, bbMin: THREE.Vector3, bbMax: THREE.Vector3, armXTh: number): HumanPart {
   const h = Math.max(1e-6, bbMax.y - bbMin.y);
   const ry = (p.y - bbMin.y) / h;
-  if (ry < 0.34) return p.x >= 0 ? 'leg_r' : 'leg_l';
-  if (ry > 0.78) return 'head';
+  // Legs are the two separate boxes at |x| ≥ 1; the x≈0 strip between them is
+  // torso (skipping it stops the "crotch block" swinging with the legs and
+  // tearing the lower body apart while walking).
+  if (ry < 0.34) return Math.abs(p.x) > 0.5 ? (p.x >= 0 ? 'leg_r' : 'leg_l') : 'spine';
+  // Head threshold raised so Villager's shoulder band (ry≈0.79) stays on the
+  // torso; both head boxes sit at ry≥0.89.
+  if (ry > 0.85) return 'head';
   if (Math.abs(p.x) > armXTh) return p.x > 0 ? 'arm_r' : 'arm_l';
   return 'spine';
 }
@@ -87,9 +92,13 @@ function classifyQuad(p: THREE.Vector3, bbMin: THREE.Vector3, bbMax: THREE.Vecto
   const h = Math.max(1e-6, bbMax.y - bbMin.y);
   const ry = (p.y - bbMin.y) / h;
   const zc = (p.z - bbMin.z) / Math.max(1e-6, bbMax.z - bbMin.z);
-  if (ry > 0.82) return 'head';
+  // Wolf's head band starts at ry≈0.775 (lower jaw): 0.82 cut the jaw off
+  // into the torso, so the head rotated while the jaw stayed put → face warp.
+  if (ry > 0.74) return 'head';
   if (ry < 0.4) {
-    const front = zc > 0.5;
+    // Front legs sit at z≈6–8 (zc≈0.9), back legs at z≈−8 (zc≈0); the old
+    // zc>0.5 boundary swallowed the z≈0 mid-leg blocks into the back pair.
+    const front = zc > 0.42;
     return (p.x >= 0 ? front ? 'leg_fr' : 'leg_br' : front ? 'leg_fl' : 'leg_bl');
   }
   return 'body';
@@ -213,11 +222,12 @@ function makeWalkClip(kind: RigKind, partIndex: Record<string, number>, period: 
     for (let i = 0; i <= n; i++) bobValues.push(0.07 * Math.abs(Math.sin((Math.PI * 2 * i) / n)));
     tracks.push(new THREE.NumberKeyframeTrack('spine.position[y]', bobTimes, bobValues));
   } else {
-    // diagonal gait: fr+bl in phase, fl+br in opposite phase
-    tracks.push(qTrack('leg_fr', times, sin(0, 0.4)));
-    tracks.push(qTrack('leg_bl', times, sin(0, 0.4)));
-    tracks.push(qTrack('leg_fl', times, sin(Math.PI, 0.4)));
-    tracks.push(qTrack('leg_br', times, sin(Math.PI, 0.4)));
+    // diagonal gait: fr+bl in phase, fl+br in opposite phase. Back legs get
+    // a bigger swing so the rear pair reads clearly alongside the front.
+    tracks.push(qTrack('leg_fr', times, sin(0, 0.45)));
+    tracks.push(qTrack('leg_bl', times, sin(0, 0.55)));
+    tracks.push(qTrack('leg_fl', times, sin(Math.PI, 0.45)));
+    tracks.push(qTrack('leg_br', times, sin(Math.PI, 0.55)));
     const bobTimes = times;
     const bobValues: number[] = [];
     for (let i = 0; i <= n; i++) bobValues.push(0.045 * Math.abs(Math.sin((Math.PI * 2 * i) / n)));

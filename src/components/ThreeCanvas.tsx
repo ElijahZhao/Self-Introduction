@@ -1259,14 +1259,15 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       const entries = wanderersRef.current;
       // Collision: only the 4 interactive orbit rings (Saturn 2.15, plane
       // 3.82, contact 4.55, energy orb 3.6) are big enough to matter; purely
-      // decorative orbiters (r 4.7–6.55) stay clear of the safety band. Keep
-      // the clearance tight so wanderers mostly keep moving.
+      // decorative orbiters (r 4.7–6.55) stay clear of the safety band. 0.34
+      // = true-contact clearance; the old 0.6 froze wanderers whenever Saturn
+      // (r 2.15) swept past paths at r 2.4–2.8 ("stuck while trying to walk").
       const blockedByOrbit = (x: number, z: number) => {
         for (const g of orbitingItemsRef.current) {
           if (!g.userData?.id) continue;
           const dx = g.position.x - x;
           const dz = g.position.z - z;
-          if (dx * dx + dz * dz < 0.6 * 0.6) return true;
+          if (dx * dx + dz * dz < 0.34 * 0.34) return true;
         }
         return false;
       };
@@ -1302,14 +1303,16 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           const dist = tmpDir.length();
           const nx = w.group.position.x + tmpDir.normalize().x * Math.min(w.speed * delta, dist);
           const nz = w.group.position.z + tmpDir.z * Math.min(w.speed * delta, dist);
-          // mutual exclusion: other wanderer too close?
+          // mutual exclusion: other wanderer too close? 0.38 keeps the three
+          // (paths now live in the r 2.9–3.2 band) from deadlocking each
+          // other; they only give way briefly.
           let tooClose = false;
           for (let k = 0; k < entries.length; k++) {
             if (k === i) continue;
             const o = entries[k];
             const dx = o.group.position.x - nx;
             const dz = o.group.position.z - nz;
-            if (dx * dx + dz * dz < 0.55 * 0.55) {
+            if (dx * dx + dz * dz < 0.38 * 0.38) {
               tooClose = true;
               break;
             }
@@ -1460,9 +1463,9 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
     // Wandering blocky characters — Minecraft Steve/Villager/Wolf (CC-BY
     // models by vinceyanez on Sketchfab, no skeletal animation: movement is
-    // faked with a bob). Paths stay in the 2.4–3.2 "safety band" between
-    // orbit rings (Saturn 2.15, energy orb 3.6 / plane 3.82) and avoid the
-    // pedestal (r≈1.4). Mutual exclusion + orbit avoidance below.
+    // faked with a bob). Paths live in the r 2.9–3.25 safety band between
+    // orbit rings (Saturn 2.15, energy orb 3.6 / plane 3.82) and clear the
+    // pedestal (r≈1.4); corners are phase-shifted so the three rarely bump.
     const steveWanderGroup = new THREE.Group();
     loadWanderer(steveWanderGroup, 'Steve.glb', null, {
       scale: 0.85,
@@ -1470,10 +1473,10 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       speed: 0.5,
       rig: 'human',
       path: [
-        new THREE.Vector3(2.6, 0, 1.0),
-        new THREE.Vector3(2.4, 0, -1.6),
-        new THREE.Vector3(-2.7, 0, -1.7),
-        new THREE.Vector3(-2.8, 0, 1.0),
+        new THREE.Vector3(3.1, 0, 0.5),
+        new THREE.Vector3(3.0, 0, -1.2),
+        new THREE.Vector3(-3.15, 0, -0.6),
+        new THREE.Vector3(-2.9, 0, 1.3),
       ],
     });
     scene.add(steveWanderGroup);
@@ -1485,10 +1488,10 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       speed: 0.35,
       rig: 'human',
       path: [
-        new THREE.Vector3(-2.2, 0, 1.8),
-        new THREE.Vector3(-2.3, 0, -1.0),
-        new THREE.Vector3(2.3, 0, -1.4),
-        new THREE.Vector3(2.4, 0, 1.2),
+        new THREE.Vector3(2.9, 0, 0.7),
+        new THREE.Vector3(2.5, 0, -1.6),
+        new THREE.Vector3(-2.9, 0, -0.5),
+        new THREE.Vector3(-2.7, 0, 1.3),
       ],
     });
     scene.add(villagerWanderGroup);
@@ -1500,10 +1503,10 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       speed: 0.7,
       rig: 'quadruped',
       path: [
-        new THREE.Vector3(1.3, 0, 2.1),
-        new THREE.Vector3(0.5, 0, -2.4),
-        new THREE.Vector3(-1.8, 0, -1.8),
-        new THREE.Vector3(-1.5, 0, 2.0),
+        new THREE.Vector3(3.0, 0, 1.0),
+        new THREE.Vector3(2.2, 0, -2.2),
+        new THREE.Vector3(-2.8, 0, -1.3),
+        new THREE.Vector3(-2.5, 0, 1.9),
       ],
     });
     scene.add(wolfWanderGroup);
