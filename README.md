@@ -36,7 +36,7 @@
 - 环绕物：`earth_moon.glb`（地月）、`fox.glb`（小狐狸）、`plane.glb`（纸飞机）、`saturn.glb`（土星），同存于 `public/models/`。
 - 装饰环绕物：`orb-planet_5-transformed.glb`（小行星）、`orb-spaceship_finnthefrog-transformed.glb`（小飞船）、`orb-rover_1-transformed.glb`（月球车）、`orb-rover_2-transformed.glb`（探索车），来源 [Quaternius Ultimate Space Kit](https://quaternius.com/packs/ultimatespacekit.html)（CC0-1.0）；`orb-pickup_sphere-transformed.glb`（能量球，可交互，承接技能图谱），同源同授权，均存于 `public/models/`。
 - 场景装饰物：`decor-speeder.glb`（悬浮快艇）、`decor-satellite-dish.glb`（卫星天线）、`decor-astronaut.glb`（宇航员）、`decor-miner.glb`（采矿船）、`decor-meteor.glb`（陨石），来源 [Kenney Space Kit](https://kenney.nl/assets/space-kit)（CC0-1.0，静态 GLB、顶点色无贴图、0 骨骼，渲染确定性），经 Flockbay 免费直链下载，存于 `public/models/`。
-- 场景漫游角色（替代原 KayKit 骑士/法师）：`Steve.glb`（史蒂夫）、`Villager.glb`（村民）、`Wolf.glb`（狼），来源 [vinceyanez — Sketchfab](https://sketchfab.com/vinceyanez)（Steve [cb228dc](https://sketchfab.com/3d-models/cb228dcc137042cc9a3dc588758cc6e9) / Villager 同作者同系列 / Wolf 同作者同系列，均为 **CC-BY 4.0，需署名 vinceyanez**），无骨骼静态 GLB，移动采用程序化弹跳（bob）模拟行走，存于 `public/models/`。
+- 场景漫游角色：`Knight.glb`（骑士）、`Mage.glb`（法师），来源 [KayKit — Adventurers](https://kaylousberg.itch.io/adventurers)（CC0-1.0），原生骨骼动画（行走/待机，动画取自 `Rig_Medium_MovementBasic.glb`），沿展台安全带漫游；`Wolf.glb`（白狼）作纯装饰轨道物绕展台运行，来源 [vinceyanez — Sketchfab](https://sketchfab.com/vinceyanez)（**CC-BY 4.0，需署名 vinceyanez**），存于 `public/models/`。`Steve.glb` / `Villager.glb` 为历史素材（vinceyanez CC-BY），已从场景移除、文件保留。
 - Draco 解码器本地分发于 `public/draco/`（不依赖 gstatic CDN，大陆可访问）。
 
 ## 🛠️ 项目技术栈

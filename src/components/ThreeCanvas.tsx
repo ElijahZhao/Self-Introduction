@@ -17,7 +17,6 @@ import {
   BuiltinModelId,
 } from '../types';
 import { audioEngine } from '../services/audioEngine';
-import { rigBlockyModel, type RigKind } from '../services/blockyRig';
 import { createContactShadowTexture } from '../utils/faceTextureGenerator';
 
 interface ActiveShockwave {
@@ -1138,7 +1137,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       group: THREE.Group,
       charFile: string,
       animFile: string | null,
-      opts: { scale: number; path: THREE.Vector3[]; speed: number; baseY: number; rig?: RigKind }
+      opts: { scale: number; path: THREE.Vector3[]; speed: number; baseY: number }
     ) => {
       // The KayKit T-Pose idle keeps arms spread wide like a mannequin. Rewrite
       // the idle clip's arm tracks so the character rests with arms naturally
@@ -1196,18 +1195,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
                 clips.find((c) => c.name.toLowerCase().includes(kw)) || null;
               let idleClip = pickClip('t-pose') || pickClip('idle') || pickClip('jump_idle') || null;
               let walkClip = pickClip('walking_a') || pickClip('walk') || pickClip('running_a') || null;
-              let mixer: THREE.AnimationMixer | null = null;
-              if (!idleClip && !walkClip && opts.rig) {
-                // Static merged GLB (e.g. Minecraft set): synthesize bones +
-                // skinning + walk/idle clips in code.
-                const rig = rigBlockyModel(s, opts.rig);
-                if (rig) {
-                  mixer = new THREE.AnimationMixer(rig.skeletonRoot);
-                  idleClip = rig.idleClip;
-                  walkClip = rig.walkClip;
-                }
-              }
-              if (!mixer) mixer = new THREE.AnimationMixer(s);
+              const mixer: THREE.AnimationMixer | null = new THREE.AnimationMixer(s);
               if (idleClip) relaxIdleArms(idleClip);
               const p0 = opts.path[0];
               group.position.set(p0.x, opts.baseY, p0.z);
@@ -1462,18 +1450,30 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       orientToTangent: true,
     });
 
-    // Wandering blocky characters — Minecraft Steve/Villager/Wolf (CC-BY
-    // models by vinceyanez on Sketchfab, no skeletal animation: movement is
-    // faked with a bob). Paths live in the r 2.9–3.25 safety band between
-    // orbit rings (Saturn 2.15, energy orb 3.6 / plane 3.82) and clear the
-    // pedestal (r≈1.4); spawn points are phase-shifted so all three clear
-    // the mutual-exclusion radius on load (a spawn cluster dead-locked them).
-    const steveWanderGroup = new THREE.Group();
-    loadWanderer(steveWanderGroup, 'Steve.glb', null, {
-      scale: 0.85,
+    // -------------------------------------------------------------------------
+    // Wandering characters — KayKit Knight & Mage (CC0, native animation rigs
+    // from Rig_Medium_MovementBasic). They idle/walk around the pedestal along
+    // the r 2.9–3.25 safety band (clear of Saturn 2.15 / plane 3.82 / other
+    // orbiters); spawn points are phase-shifted so the two don't dead-lock on
+    // load. The Minecraft Wolf stays as a static orbit orb (raw GLB, no rig).
+    // -------------------------------------------------------------------------
+    const wolfOrbitGroup = new THREE.Group();
+    loadDecorativeOrb(wolfOrbitGroup, 'Wolf.glb', 0.55);
+    registerItem(wolfOrbitGroup, {
+      emoji: '🐺',
+      label: '白狼',
+      radius: 2.7,
+      angle: 2.6,
+      speed: 0.3,
       baseY: 0,
-      speed: 0.5,
-      rig: 'human',
+      orientToTangent: true,
+    });
+
+    const knightWanderGroup = new THREE.Group();
+    loadWanderer(knightWanderGroup, 'Knight.glb', 'Rig_Medium_MovementBasic.glb', {
+      scale: 1.05,
+      baseY: 0,
+      speed: 0.55,
       path: [
         new THREE.Vector3(3.1, 0, 0.5),
         new THREE.Vector3(3.0, 0, -1.2),
@@ -1481,14 +1481,13 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         new THREE.Vector3(-2.9, 0, 1.3),
       ],
     });
-    scene.add(steveWanderGroup);
+    scene.add(knightWanderGroup);
 
-    const villagerWanderGroup = new THREE.Group();
-    loadWanderer(villagerWanderGroup, 'Villager.glb', null, {
-      scale: 0.8,
+    const mageWanderGroup = new THREE.Group();
+    loadWanderer(mageWanderGroup, 'Mage.glb', 'Rig_Medium_MovementBasic.glb', {
+      scale: 1.0,
       baseY: 0,
-      speed: 0.35,
-      rig: 'human',
+      speed: 0.4,
       path: [
         new THREE.Vector3(2.8, 0, 0.9),
         new THREE.Vector3(2.5, 0, -1.6),
@@ -1496,22 +1495,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         new THREE.Vector3(-2.7, 0, 1.3),
       ],
     });
-    scene.add(villagerWanderGroup);
-
-    const wolfWanderGroup = new THREE.Group();
-    loadWanderer(wolfWanderGroup, 'Wolf.glb', null, {
-      scale: 0.55,
-      baseY: 0,
-      speed: 0.7,
-      rig: 'quadruped',
-      path: [
-        new THREE.Vector3(2.7, 0, 1.6),
-        new THREE.Vector3(2.2, 0, -2.2),
-        new THREE.Vector3(-2.8, 0, -1.3),
-        new THREE.Vector3(-2.5, 0, 1.9),
-      ],
-    });
-    scene.add(wolfWanderGroup);
+    scene.add(mageWanderGroup);
 
     const glowSphereGroup = new THREE.Group();
     loadDecorativeOrb(glowSphereGroup, 'orb-pickup_sphere-transformed.glb', 0.55);
