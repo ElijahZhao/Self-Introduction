@@ -1200,14 +1200,16 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
               const mixer: THREE.AnimationMixer | null = new THREE.AnimationMixer(s);
               if (idleClip) relaxIdleArms(idleClip);
               // KayKit walk clips carry a hip-height curve (0.32–0.38) that
-              // lifts the whole skeleton off the ground while walking. Pin the
-              // hip Y track to the bind-pose height (0.4057) so feet stay on
-              // the floor; leg swing (rotation) is unaffected.
+              // lifts the whole skeleton off the ground while walking. GLTFLoader
+              // builds the track as a vector track `hips.position` (not a split
+              // `hips.position[y]`), so pin its Y component to the bind-pose
+              // height (0.4057) to keep the feet on the floor; leg swing
+              // (rotation) is unaffected.
               if (walkClip) {
                 const HIP_Y = 0.4057;
                 for (const track of walkClip.tracks) {
-                  if (track.name === 'hips.position[y]' && track instanceof THREE.NumberKeyframeTrack) {
-                    for (let i = 0; i < track.values.length; i++) track.values[i] = HIP_Y;
+                  if (track.name === 'hips.position' && track instanceof THREE.VectorKeyframeTrack) {
+                    for (let i = 0; i < track.values.length; i += 3) track.values[i + 1] = HIP_Y;
                   }
                 }
               }
@@ -1259,6 +1261,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
     const updateWanderers = (delta: number) => {
       const tmpDir = new THREE.Vector3();
+      const tmpV = new THREE.Vector3();
       const entries = wanderersRef.current;
       // Collision: only the 4 interactive orbit rings (Saturn 2.15, plane
       // 3.82, contact 4.55, energy orb 3.6) are big enough to matter; purely
@@ -1338,17 +1341,23 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           if (w.noAnim) w.group.position.y = w.baseY + Math.sin((w.t ?? 0) * 9) * 0.06;
         }
         w.mixer.update(delta);
-        // Dynamic foot grounding: some KayKit clips still carry residual
-        // skeleton lift, so every 3rd frame measure the real lowest vertex
-        // (world-space) and nudge the group so the feet always touch the floor.
+        // Foot grounding via the hips bone: Box3.setFromObject only reads
+        // bind-pose vertices (skinning is invisible to it), so instead anchor
+        // by the animated hips bone — in bind pose the feet sit at y=0 with
+        // hips at 0.4057 model units. Every 2nd frame nudge group.position.y
+        // so the feet always rest on baseY.
         const s = w.group.children[0];
         if (s && (w.idle || w.walk)) {
           w.fc = (w.fc ?? 0) + 1;
-          if (w.fc % 3 === 0) {
-            const bb = new THREE.Box3().setFromObject(s);
-            const footY = bb.min.y - w.group.position.y;
-            const drift = w.baseY - footY;
-            if (Math.abs(drift) > 0.006) w.group.position.y += drift;
+          if (w.fc % 2 === 0) {
+            const hips = s.getObjectByName('hips');
+            if (hips) {
+              hips.updateWorldMatrix(true, false);
+              hips.getWorldPosition(tmpV);
+              const footY = tmpV.y - 0.4057 * (s.scale.y || 1);
+              const drift = w.baseY - footY;
+              if (Math.abs(drift) > 0.004) w.group.position.y += drift;
+            }
           }
         }
       }
