@@ -1477,8 +1477,8 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       path: [
         new THREE.Vector3(3.1, 0, 0.5),
         new THREE.Vector3(3.0, 0, -1.2),
-        new THREE.Vector3(-3.15, 0, -0.6),
-        new THREE.Vector3(-2.9, 0, 1.3),
+        new THREE.Vector3(2.8, 0, -1.4),
+        new THREE.Vector3(2.9, 0, 1.1),
       ],
     });
     scene.add(knightWanderGroup);
@@ -1489,8 +1489,8 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       baseY: 0,
       speed: 0.4,
       path: [
-        new THREE.Vector3(2.8, 0, 0.9),
-        new THREE.Vector3(2.5, 0, -1.6),
+        new THREE.Vector3(-2.8, 0, 0.9),
+        new THREE.Vector3(-2.5, 0, -1.6),
         new THREE.Vector3(-2.9, 0, -0.5),
         new THREE.Vector3(-2.7, 0, 1.3),
       ],
