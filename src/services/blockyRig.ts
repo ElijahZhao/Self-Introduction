@@ -212,25 +212,27 @@ function makeWalkClip(kind: RigKind, partIndex: Record<string, number>, period: 
   };
   const tracks: THREE.KeyframeTrack[] = [];
   if (kind === 'human') {
-    tracks.push(qTrack('arm_l', times, sin(0, 0.55)));
-    tracks.push(qTrack('arm_r', times, sin(Math.PI, 0.55)));
-    tracks.push(qTrack('leg_l', times, sin(Math.PI, 0.42)));
-    tracks.push(qTrack('leg_r', times, sin(0, 0.42)));
+    // Subdued swing (arm 0.3 / leg 0.22 rad): keeps the blocky limbs from
+    // looking like they are breaking away from the torso while walking.
+    tracks.push(qTrack('arm_l', times, sin(0, 0.3)));
+    tracks.push(qTrack('arm_r', times, sin(Math.PI, 0.3)));
+    tracks.push(qTrack('leg_l', times, sin(Math.PI, 0.22)));
+    tracks.push(qTrack('leg_r', times, sin(0, 0.22)));
     // body bob: 2 bobs per cycle
     const bobTimes = times;
     const bobValues: number[] = [];
-    for (let i = 0; i <= n; i++) bobValues.push(0.07 * Math.abs(Math.sin((Math.PI * 2 * i) / n)));
+    for (let i = 0; i <= n; i++) bobValues.push(0.05 * Math.abs(Math.sin((Math.PI * 2 * i) / n)));
     tracks.push(new THREE.NumberKeyframeTrack('spine.position[y]', bobTimes, bobValues));
   } else {
     // diagonal gait: fr+bl in phase, fl+br in opposite phase. Back legs get
     // a bigger swing so the rear pair reads clearly alongside the front.
-    tracks.push(qTrack('leg_fr', times, sin(0, 0.45)));
-    tracks.push(qTrack('leg_bl', times, sin(0, 0.55)));
-    tracks.push(qTrack('leg_fl', times, sin(Math.PI, 0.45)));
-    tracks.push(qTrack('leg_br', times, sin(Math.PI, 0.55)));
+    tracks.push(qTrack('leg_fr', times, sin(0, 0.3)));
+    tracks.push(qTrack('leg_bl', times, sin(0, 0.42)));
+    tracks.push(qTrack('leg_fl', times, sin(Math.PI, 0.3)));
+    tracks.push(qTrack('leg_br', times, sin(Math.PI, 0.42)));
     const bobTimes = times;
     const bobValues: number[] = [];
-    for (let i = 0; i <= n; i++) bobValues.push(0.045 * Math.abs(Math.sin((Math.PI * 2 * i) / n)));
+    for (let i = 0; i <= n; i++) bobValues.push(0.035 * Math.abs(Math.sin((Math.PI * 2 * i) / n)));
     tracks.push(new THREE.NumberKeyframeTrack('body.position[y]', bobTimes, bobValues));
   }
   return new THREE.AnimationClip(`mc_walk_${kind}`, period, tracks);

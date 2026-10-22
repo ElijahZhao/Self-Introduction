@@ -1223,7 +1223,8 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
                 // is the spawn point itself, so aiming at it would idle forever
                 speed: opts.speed,
                 baseY: opts.baseY,
-                timer: 1.5 + Math.random() * 2.5,
+                // Short first idle so visitors see them amble quickly.
+                timer: 0.7 + Math.random() * 1.0,
                 noAnim: !idleClip && !walkClip,
                 t: Math.random() * 10,
               };
@@ -1303,16 +1304,16 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           const dist = tmpDir.length();
           const nx = w.group.position.x + tmpDir.normalize().x * Math.min(w.speed * delta, dist);
           const nz = w.group.position.z + tmpDir.z * Math.min(w.speed * delta, dist);
-          // mutual exclusion: other wanderer too close? 0.38 keeps the three
-          // (paths now live in the r 2.9–3.2 band) from deadlocking each
-          // other; they only give way briefly.
+          // mutual exclusion: other wanderer too close? 0.34 + phase-shifted
+          // spawns keep the three from dead-locking each other at load; they
+          // only give way briefly when paths actually cross.
           let tooClose = false;
           for (let k = 0; k < entries.length; k++) {
             if (k === i) continue;
             const o = entries[k];
             const dx = o.group.position.x - nx;
             const dz = o.group.position.z - nz;
-            if (dx * dx + dz * dz < 0.38 * 0.38) {
+            if (dx * dx + dz * dz < 0.34 * 0.34) {
               tooClose = true;
               break;
             }
@@ -1465,7 +1466,8 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     // models by vinceyanez on Sketchfab, no skeletal animation: movement is
     // faked with a bob). Paths live in the r 2.9–3.25 safety band between
     // orbit rings (Saturn 2.15, energy orb 3.6 / plane 3.82) and clear the
-    // pedestal (r≈1.4); corners are phase-shifted so the three rarely bump.
+    // pedestal (r≈1.4); spawn points are phase-shifted so all three clear
+    // the mutual-exclusion radius on load (a spawn cluster dead-locked them).
     const steveWanderGroup = new THREE.Group();
     loadWanderer(steveWanderGroup, 'Steve.glb', null, {
       scale: 0.85,
@@ -1488,7 +1490,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       speed: 0.35,
       rig: 'human',
       path: [
-        new THREE.Vector3(2.9, 0, 0.7),
+        new THREE.Vector3(2.8, 0, 0.9),
         new THREE.Vector3(2.5, 0, -1.6),
         new THREE.Vector3(-2.9, 0, -0.5),
         new THREE.Vector3(-2.7, 0, 1.3),
@@ -1503,7 +1505,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       speed: 0.7,
       rig: 'quadruped',
       path: [
-        new THREE.Vector3(3.0, 0, 1.0),
+        new THREE.Vector3(2.7, 0, 1.6),
         new THREE.Vector3(2.2, 0, -2.2),
         new THREE.Vector3(-2.8, 0, -1.3),
         new THREE.Vector3(-2.5, 0, 1.9),
