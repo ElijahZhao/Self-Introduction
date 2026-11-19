@@ -35,7 +35,9 @@ export function resolveAssetUrl(relativePath: string): string {
 }
 
 export function getModelCandidateUrls(rawPath: string): string[] {
-  if (/^(?:blob:|data:)/i.test(rawPath)) {
+  // Absolute / inline URLs are already the answer: prefixing them with ./ or /
+  // produced nonsense candidates like "./https://example.com/a.glb".
+  if (/^(?:blob:|data:|https?:|\/\/)/i.test(rawPath)) {
     return [rawPath];
   }
   const cleanPath = rawPath.replace(/^\/+/, '');
@@ -53,9 +55,10 @@ export function getModelCandidateUrls(rawPath: string): string[] {
   const absoluteRoot = `/${cleanPath}`;
   if (!list.includes(absoluteRoot)) list.push(absoluteRoot);
 
-  // 4. Reliable GitHub Raw fallback (CORS enabled)
-  const githubRaw = `https://raw.githubusercontent.com/ElijahZhao/Self-Introduction/main/public/${cleanPath}`;
-  if (!list.includes(githubRaw)) list.push(githubRaw);
+  // No raw.githubusercontent fallback: that URL always serves the *current*
+  // main branch, so a locally missing asset would silently load a different
+  // version than the code that shipped with it — and it hides real 404s during
+  // a deploy. Assets travel with the build; a missing file must surface as one.
 
   return list;
 }
