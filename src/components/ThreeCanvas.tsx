@@ -4,7 +4,11 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { getConnectionHint, shouldSkipPrewarm } from '../utils/network';
+import {
+  getConnectionHint,
+  isConstrainedConnection,
+  shouldSkipPrewarm,
+} from '../utils/network';
 import { MODEL_PRESETS } from '../data/modelsConfig';
 import { getModelCandidateUrls } from '../utils/assetUrl';
 import gsap from 'gsap';
@@ -328,6 +332,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     callbacksRef.current.onLoadProgress?.(pct, text);
     if (criticalDone && !releasedRef.current) {
       releasedRef.current = true;
+      performance.mark?.('stage:release');
       if (releaseTimerRef.current) window.clearTimeout(releaseTimerRef.current);
       // LoadingScreen fades out only at displayPercent >= 100, so push to 100
       // on release; decorations keep streaming in underneath.
@@ -417,6 +422,22 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   // and lands exactly on the calibrated pose, so warmed/cached scenes never
   // accumulate tween state across rapid switches.
   type EntranceAnim = (scene: THREE.Object3D, s0: number, y0: number) => void;
+  // Visitors who asked for reduced motion get the final pose instead of a
+  // spring/bounce arrival; motion here is decoration, not information.
+  /** Performance marks (production too) so a real-device report reads
+   *  "stage:start → stage:character → stage:release" instead of "慢".
+   */
+  const mark = (name: string) => {
+    try {
+      performance.mark?.(name);
+    } catch {
+      /* older engines without User Timing: measurement is optional */
+    }
+  };
+
+  const prefersReducedMotion = (): boolean =>
+    typeof window !== 'undefined' &&
+    (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
   const entranceAnimations: EntranceAnim[] = [
     // 1. Spring pop: scale up with overshoot + rise
     (scene, s0, y0) => {
@@ -658,6 +679,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   // Initialize Three.js Scene
   useEffect(() => {
     const container = containerRef.current;
+    mark('stage:start');
     if (!container) return;
 
     // Register every GLB that will stream in during this mount (character is
@@ -684,11 +706,15 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       // Leaving them here made the "(done/total)" counter stop at 14/16 forever.
       'models/Wolf.glb',
     ];
+    // On a constrained link the overlay holds only what cannot be faked: the
+    // character and the interactive energy orb (~750 KB instead of ~940 KB).
+    // Saturn and Earth-Moon have visible placeholders, so they pop into detail
+    // instead of adding another second of blank screen.
+    const constrained = isConstrainedConnection(getConnectionHint());
     criticalModelsRef.current = new Set([
       characterPath,
-      'models/saturn.glb',
-      'models/earth_moon.glb',
       'models/orb-pickup_sphere-transformed.glb',
+      ...(constrained ? [] : ['models/saturn.glb', 'models/earth_moon.glb']),
     ]);
     // Fallback release: never trap the visitor behind a slow decoration.
     releaseTimerRef.current = window.setTimeout(forceReleaseLoading, 8000);
@@ -2327,7 +2353,9 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           characterPivotRef.current.add(modelScene);
           const startEntrance = () => {
             if (isCancelled) return;
-            pickEntrance(modelScene, s0, y0);
+            mark('stage:character');
+            if (!prefersReducedMotion()) pickEntrance(modelScene, s0, y0);
+            else mark('stage:entrance-instant');
 
             // Fade the outgoing model out underneath the fresh entrance.
             if (outgoing && outgoing !== modelScene) {

@@ -40,3 +40,10 @@ export const shouldSkipPrewarm = (hint: NetworkHint | null | undefined): boolean
   if (typeof hint.downlink === 'number' && hint.downlink > 0 && hint.downlink < 1.5) return true;
   return false;
 };
+
+/**
+ * Same predicate as the prewarm gate, reused for the loading critical path: on a
+ * constrained link, holding the whole overlay for two medium GLBs is worse than
+ * letting their placeholders pop into detail later.
+ */
+export const isConstrainedConnection = shouldSkipPrewarm;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { shouldSkipPrewarm } from './network';
+import { isConstrainedConnection, shouldSkipPrewarm } from './network';
 
 describe('shouldSkipPrewarm', () => {
   it('keeps the prewarm when the connection is unknown', () => {
@@ -24,5 +24,13 @@ describe('shouldSkipPrewarm', () => {
     expect(shouldSkipPrewarm({ downlink: 10 })).toBe(false);
     // 0 means "unknown" in the spec, so it must not be read as slow.
     expect(shouldSkipPrewarm({ downlink: 0 })).toBe(false);
+  });
+});
+
+describe('isConstrainedConnection', () => {
+  it('is the same gate the loader uses for the critical path', () => {
+    expect(isConstrainedConnection({ saveData: true })).toBe(true);
+    expect(isConstrainedConnection({ effectiveType: '4g', downlink: 8 })).toBe(false);
+    expect(isConstrainedConnection(null)).toBe(false);
   });
 });
