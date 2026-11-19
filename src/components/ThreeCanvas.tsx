@@ -164,6 +164,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
   const orbitingItemsRef = useRef<THREE.Group[]>([]);
   const orbitRingsRef = useRef<THREE.Object3D[]>([]);
+  const orbitWorldRef = useRef<THREE.Group | null>(null);
   const wanderersRef = useRef<WandererEntry[]>([]);
   const rippleRingsRef = useRef<{ mesh: THREE.Mesh; active: boolean; age: number; delay: number }[]>([]);
   const ambientParticlesRef = useRef<{
@@ -433,6 +434,22 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     } catch {
       /* older engines without User Timing: measurement is optional */
     }
+  };
+
+  /**
+   * Portrait phones see roughly a third of the horizontal field a desktop does,
+   * which used to leave every orbiting item off-screen. Pull the camera back,
+   * widen the lens a touch, and shrink the orbit container so at least the inner
+   * interactive items (Saturn, energy orb) stay in frame; the hero shrinks only
+   * slightly (fov 35 → 40 at a 10% longer distance).
+   */
+  const STAGE_PORTRAIT_ASPECT = 0.9;
+  const orbitScaleFor = (aspect: number): number => (aspect < STAGE_PORTRAIT_ASPECT ? 0.6 : 1);
+  const applyStageFraming = (camera: THREE.PerspectiveCamera, aspect: number) => {
+    const portrait = aspect < STAGE_PORTRAIT_ASPECT;
+    camera.fov = portrait ? 40 : 35;
+    camera.position.set(0, portrait ? 3.4 : 3.8, portrait ? 9.2 : 8.4);
+    camera.updateProjectionMatrix();
   };
 
   const prefersReducedMotion = (): boolean =>
@@ -726,7 +743,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(35, width / height, 0.1, 100);
-    camera.position.set(0, 3.8, 8.4);
+    applyStageFraming(camera, width / height);
     camera.lookAt(0, 0.72, 0);
     cameraRef.current = camera;
 
@@ -894,6 +911,12 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
     scene.add(pedestalGroup);
 
+    // Orbit container: rings + orbiting items live here so a narrow portrait
+    // viewport can pull the whole orbit in without scaling the character.
+    const orbitWorld = new THREE.Group();
+    scene.add(orbitWorld);
+    orbitWorldRef.current = orbitWorld;
+
     // 3 Concentric Glowing Orbital Rings
     const radii = [2.05, 2.68, 3.32];
     orbitRingsRef.current = [];
@@ -908,7 +931,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       const ringMesh = new THREE.Mesh(ringGeo, ringMat);
       ringMesh.rotation.x = -Math.PI / 2;
       ringMesh.position.y = -0.08 + idx * 0.01;
-      scene.add(ringMesh);
+      orbitWorld.add(ringMesh);
       orbitRingsRef.current.push(ringMesh);
 
       // Track beads
@@ -917,7 +940,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.3 })
       );
       beadMesh.userData = { radius, angle: idx * 2.1 + 0.8, speed: 0.18 + idx * 0.04 };
-      scene.add(beadMesh);
+      orbitWorld.add(beadMesh);
       orbitRingsRef.current.push(beadMesh);
     });
 
@@ -966,7 +989,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       } else {
         group.userData = { ...meta };
       }
-      scene.add(group);
+      orbitWorld.add(group);
       orbitingItemsRef.current.push(group);
     };
 
@@ -1851,6 +1874,8 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       const w = containerRef.current.clientWidth || window.innerWidth;
       const h = containerRef.current.clientHeight || window.innerHeight;
       cameraRef.current.aspect = w / h;
+      applyStageFraming(cameraRef.current, w / h);
+      orbitWorldRef.current?.scale.setScalar(orbitScaleFor(w / h));
       cameraRef.current.updateProjectionMatrix();
       rendererRef.current.setSize(w, h);
     };
@@ -1947,7 +1972,13 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       }
 
       // Orbiting items
-      const orbitSpeedMultiplier = hoveredItemRef.current ? 0.25 : 1.0;
+      if (orbitWorldRef.current) {
+      const target = orbitScaleFor(camera.aspect);
+      if (Math.abs(orbitWorldRef.current.scale.x - target) > 0.001) {
+        orbitWorldRef.current.scale.setScalar(target);
+      }
+    }
+    const orbitSpeedMultiplier = hoveredItemRef.current ? 0.25 : 1.0;
       orbitingItemsRef.current.forEach((group, idx) => {
         const meta = group.userData;
         meta.angle += meta.speed * delta * orbitSpeedMultiplier;
