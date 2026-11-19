@@ -38,8 +38,17 @@ export const PortfolioDock: React.FC<PortfolioDockProps> = ({
       {/* Interactive Helper Hint — meaningless when the stage cannot render */}
       {!stageDown && <div className="glass-pill px-3 py-1 rounded-full text-[11px] flex items-center gap-1.5 shadow-xs pointer-events-auto transition-opacity opacity-90 hover:opacity-100">
         <span className="text-sky-500 animate-pulse">●</span>
-        <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>
+        {/* On phones the orbiting objects sit outside the narrow vertical field
+            of view, so the desktop "click the Saturn/plane" copy would point at
+            nothing. Keep the hint honest per breakpoint. */}
+        <span className={`hidden sm:inline ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
           {t('dock.hint')}
+        </span>
+        <span className={`sm:hidden ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+          {pick(
+            '点击下方板块查看详情 · 单指拖动可环绕展台',
+            'Tap a section below · drag to orbit the stage'
+          )}
         </span>
       </div>}
 

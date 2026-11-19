@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { OrbitModuleId, PersonaConfig, PersonaId, ThemeMode } from '../types';
 import { useLang } from '../i18n';
 
@@ -25,12 +25,43 @@ export const InfoModal: React.FC<InfoModalProps> = ({
   onSwitchPersona,
   onCopyText,
 }) => {
+  // Declared before the early returns: the scroll affordance below needs stable
+  // hook order even when moduleId is null for a closed modal.
+  const { pick, lang } = useLang();
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [scrollState, setScrollState] = useState({ can: false, atEnd: true });
+
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (!el) {
+      setScrollState({ can: false, atEnd: true });
+      return;
+    }
+    const measure = () => {
+      const overflow = el.scrollHeight - el.clientHeight > 8;
+      setScrollState({
+        can: overflow,
+        atEnd: !overflow || el.scrollTop + el.clientHeight >= el.scrollHeight - 8,
+      });
+    };
+    measure();
+    el.addEventListener('scroll', measure, { passive: true });
+    // Content reflows after fonts/layout settle; measure once more.
+    const timer = window.setTimeout(measure, 400);
+    const onResize = () => measure();
+    window.addEventListener('resize', onResize);
+    return () => {
+      el.removeEventListener('scroll', measure);
+      window.removeEventListener('resize', onResize);
+      window.clearTimeout(timer);
+    };
+  }, [isOpen, moduleId, lang, currentPersona.id]);
+
   if (!moduleId) return null;
   const mod = currentPersona.modules[moduleId];
   if (!mod) return null;
 
   const isDark = themeMode === 'dark';
-  const { pick, lang } = useLang();
 
   const emojiMap: Record<OrbitModuleId, string> = {
     about: '🪐',
@@ -101,9 +132,11 @@ export const InfoModal: React.FC<InfoModalProps> = ({
         </div>
 
         {/* Modal Body */}
+        <div className="relative">
         <div
           id="modal-body"
-          className={`text-sm leading-relaxed space-y-2.5 pr-10 max-h-[44vh] overflow-y-auto ${
+          ref={bodyRef}
+          className={`text-sm leading-relaxed space-y-2.5 pr-10 max-h-[46vh] sm:max-h-[52vh] overflow-y-auto ${
             isDark ? 'text-slate-200' : 'text-slate-700'
           }`}
         >
@@ -235,6 +268,24 @@ export const InfoModal: React.FC<InfoModalProps> = ({
               ))}
             </div>
           )}
+        </div>
+        {/* Phones clip roughly half the copy at 44vh; without this fade the card
+            looks complete and the rest of the content is never discovered. */}
+        {scrollState.can && !scrollState.atEnd && (
+          <div
+            className={`pointer-events-none absolute inset-x-0 bottom-0 h-12 flex items-end justify-center bg-gradient-to-t ${
+              isDark ? 'from-slate-900/85' : 'from-white/95'
+            } to-transparent`}
+          >
+            <span
+              className={`pb-0.5 text-[11px] font-medium tracking-wide ${
+                isDark ? 'text-sky-300/90' : 'text-sky-600/90'
+              }`}
+            >
+              {pick('↓ 下滑查看全部内容', '↓ Scroll for the rest')}
+            </span>
+          </div>
+        )}
         </div>
 
         {/* Bottom Audio Bar */}

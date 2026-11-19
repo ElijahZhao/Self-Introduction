@@ -683,8 +683,8 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       'models/decor-astronaut.glb',
       'models/decor-miner.glb',
       'models/decor-meteor.glb',
-      'models/Steve.glb',
-      'models/Villager.glb',
+      // Steve / Villager were pulled from the scene (files kept for archive).
+      // Leaving them here made the "(done/total)" counter stop at 14/16 forever.
       'models/Wolf.glb',
     ];
     criticalModelsRef.current = new Set([
@@ -2080,10 +2080,12 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       // scene additions can be sanity-checked without a profiler.
       perfFrameRef.current++;
       if (perfFrameRef.current === 300 || perfFrameRef.current % 120 === 0) {
-        const info = renderer.info.render;
-        console.info(
-          `[perf] frame=${perfFrameRef.current} drawCalls=${info.calls} triangles=${info.triangles}`
-        );
+        if (import.meta.env.DEV) {
+          const info = renderer.info.render;
+          console.info(
+            `[perf] frame=${perfFrameRef.current} drawCalls=${info.calls} triangles=${info.triangles}`
+          );
+        }
       }
     };
 
