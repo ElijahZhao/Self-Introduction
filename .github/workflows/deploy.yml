@@ -33,6 +33,12 @@ jobs:
           npm ci --no-audit --no-fund
         timeout-minutes: 8
 
+      - name: Typecheck + lint + tests
+        run: |
+          npm run typecheck
+          npm run lint
+          npm run test
+
       - name: Build
         run: npm run build
 

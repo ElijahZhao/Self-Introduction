@@ -28,6 +28,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
   // Declared before the early returns: the scroll affordance below needs stable
   // hook order even when moduleId is null for a closed modal.
   const { pick, lang } = useLang();
+  const cardRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const [scrollState, setScrollState] = useState({ can: false, atEnd: true });
 
@@ -57,6 +58,30 @@ export const InfoModal: React.FC<InfoModalProps> = ({
     };
   }, [isOpen, moduleId, lang, currentPersona.id]);
 
+  // Dialog semantics: Esc closes, focus moves into the card on open and returns
+  // to the trigger on close. Without this, keyboard users had no way out of a
+  // modal that visually covers the dock they came from.
+  useEffect(() => {
+    if (!isOpen || !moduleId) return;
+    const previous = document.activeElement as HTMLElement | null;
+    cardRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.stopPropagation();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      // A JS-triggered open (or a click that never focused the dock button) leaves
+      // `previous` as body; blurring the card is better than parking focus on an
+      // element that is about to be hidden.
+      if (previous && previous !== document.body) previous.focus?.();
+      else cardRef.current?.blur();
+    };
+  }, [isOpen, moduleId, onClose]);
+
   if (!moduleId) return null;
   const mod = currentPersona.modules[moduleId];
   if (!mod) return null;
@@ -82,7 +107,15 @@ export const InfoModal: React.FC<InfoModalProps> = ({
       id="info-modal-wrapper"
       className={`fixed left-1/2 top-1/2 z-30 w-[92vw] max-w-[490px] ${isOpen ? 'open' : ''}`}
     >
-      <div id="info-modal-card" className="glass-modal rounded-[26px] p-6 sm:p-7 relative overflow-hidden">
+      <div
+        id="info-modal-card"
+        ref={cardRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+        tabIndex={-1}
+        className="glass-modal rounded-[26px] p-6 sm:p-7 relative overflow-hidden outline-none"
+      >
         {/* Subtle top highlight bar */}
         <div
           id="modal-accent-bar"

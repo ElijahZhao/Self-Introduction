@@ -42,10 +42,11 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
     }
   }, [isComplete, displayPercent]);
 
+  const { pick, t } = useLang();
+  const isDark = themeMode === 'dark';
+
   if (!shouldRender) return null;
 
-  const isDark = themeMode === 'dark';
-  const { pick, t } = useLang();
   const radius = 52;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - Math.min(100, displayPercent) / 100);

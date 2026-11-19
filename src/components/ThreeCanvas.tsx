@@ -4,6 +4,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { getConnectionHint, shouldSkipPrewarm } from '../utils/network';
 import { MODEL_PRESETS } from '../data/modelsConfig';
 import { getModelCandidateUrls } from '../utils/assetUrl';
 import gsap from 'gsap';
@@ -1207,8 +1208,8 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
             const finish = (clips: THREE.AnimationClip[]) => {
               const pickClip = (kw: string) =>
                 clips.find((c) => c.name.toLowerCase().includes(kw)) || null;
-              let idleClip = pickClip('t-pose') || pickClip('idle') || pickClip('jump_idle') || null;
-              let walkClip = pickClip('walking_a') || pickClip('walk') || pickClip('running_a') || null;
+              const idleClip = pickClip('t-pose') || pickClip('idle') || pickClip('jump_idle') || null;
+              const walkClip = pickClip('walking_a') || pickClip('walk') || pickClip('running_a') || null;
               const mixer: THREE.AnimationMixer | null = new THREE.AnimationMixer(s);
               if (idleClip) relaxIdleArms(idleClip);
               // KayKit walk clips carry a hip-height curve (0.32–0.38) that
@@ -2347,9 +2348,12 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
           // the protagonist.
           reportModelArrived(preset.path);
           // Byte-prefetch + full DRACO warm-decode of the other characters so
-          // the next switch is instant.
-          prefetchCharacterModels(preset.path);
-          warmCharacterCache(preset.path);
+          // the next switch is instant. Skipped on saveData / 2G-3G links: that
+          // is ~4 MB of GLB the visitor may never switch to.
+          if (!shouldSkipPrewarm(getConnectionHint())) {
+            prefetchCharacterModels(preset.path);
+            warmCharacterCache(preset.path);
+          }
         },
         (xhr) => {
           if (xhr.lengthComputable && xhr.total > 0) {

@@ -154,7 +154,9 @@ const AppInner: React.FC = () => {
 
   // 3D Model Loading Progress State
   const [loadingProgress, setLoadingProgress] = useState(15);
-  const [loadingStatusText, setLoadingStatusText] = useState('正在初始化 3D 展台与渲染引擎...');
+  const [loadingStatusText, setLoadingStatusText] = useState(
+    pick('正在初始化 3D 展台与渲染引擎...', 'Initializing the 3D stage...')
+  );
   const [isLoadingComplete, setIsLoadingComplete] = useState(false);
 
   // 3D stage availability. A missing WebGL2 context used to throw inside the
@@ -174,6 +176,9 @@ const AppInner: React.FC = () => {
   // overlay must not sit at 15% forever with nothing to click.
   useEffect(() => {
     if (!webglSupported || stageFailure) {
+      // Deliberate: the overlay is already showing, and jumping it to 100% is
+      // the only way to release it when no loader will ever report progress.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoadingProgress(100);
       setIsLoadingComplete(true);
       setLoadingStatusText(
@@ -248,7 +253,11 @@ const AppInner: React.FC = () => {
       localStorage.setItem('avatar_portfolio_theme', nextTheme);
     } catch (e) {}
     audioEngine.playSFX('mode');
-    showToast(nextTheme === 'dark' ? '已切换至沉浸深色星轨模式 🌙' : '已切换至明亮轻拟态展台 ☀️');
+    showToast(
+      nextTheme === 'dark'
+        ? pick('已切换至沉浸深色星轨模式 🌙', 'Switched to the dark starfield 🌙')
+        : pick('已切换至明亮轻拟态展台 ☀️', 'Switched to the bright stage ☀️')
+    );
   };
 
   const handleToggleBGM = async () => {
@@ -268,7 +277,7 @@ const AppInner: React.FC = () => {
       localStorage.setItem('avatar_portfolio_cursor_enabled', next ? '1' : '0');
     } catch (e) {}
     audioEngine.playSFX('tap');
-    showToast(next ? '流体光标已开启 ✨' : '流体光标已关闭');
+    showToast(next ? pick('流体光标已开启 ✨', 'Fluid cursor on ✨') : pick('流体光标已关闭', 'Fluid cursor off'));
   };
 
   const handleSetCursorStyle = (style: 'rainbow' | 'star') => {
@@ -277,7 +286,11 @@ const AppInner: React.FC = () => {
       localStorage.setItem('avatar_portfolio_cursor_style', style);
     } catch (e) {}
     audioEngine.playSFX('tap');
-    showToast(style === 'rainbow' ? '光标样式：彩虹流体 🌈' : '光标样式：星夜流光 ✨');
+    showToast(
+      style === 'rainbow'
+        ? pick('光标样式：彩虹流体 🌈', 'Cursor: rainbow fluid 🌈')
+        : pick('光标样式：星夜流光 ✨', 'Cursor: star trail ✨')
+    );
   };
 
   const handleSelectModel = (id: BuiltinModelId) => {
@@ -289,7 +302,9 @@ const AppInner: React.FC = () => {
     } catch (e) {}
     const preset = MODEL_PRESETS.find((p) => p.id === id);
     if (preset) {
-      showToast(`已召唤主角：${preset.name} ${preset.emoji}`);
+      showToast(
+        `${pick('已召唤主角：', 'Character summoned: ')}${pick(preset.name, preset.nameEn || preset.name)} ${preset.emoji}`
+      );
     }
   };
 
@@ -307,7 +322,9 @@ const AppInner: React.FC = () => {
     });
     setHairColor(newPersona.outfit.hairColor);
 
-    showToast(`已切换身份：${newPersona.name}`);
+    showToast(
+      `${pick('已切换身份：', 'Persona switched: ')}${pick(newPersona.name, newPersona.nameEn || newPersona.name)}`
+    );
   };
 
   const handleToggleAccessory = (key: keyof AccessoryState) => {
@@ -323,7 +340,9 @@ const AppInner: React.FC = () => {
     const nextIdx = (hairIndex + 1) % HAIR_PALETTES.length;
     setHairIndex(nextIdx);
     setHairColor(HAIR_PALETTES[nextIdx]);
-    showToast(`发色已切换 (${nextIdx + 1}/${HAIR_PALETTES.length})`);
+    showToast(
+      `${pick('发色已切换', 'Hair color changed')} (${nextIdx + 1}/${HAIR_PALETTES.length})`
+    );
   };
 
   const handleSelectOrbitItem = (moduleId: OrbitModuleId) => {
@@ -353,7 +372,7 @@ const AppInner: React.FC = () => {
   const handleCopyText = (text: string) => {
     navigator.clipboard?.writeText(text);
     audioEngine.playSFX('tap');
-    showToast('已成功复制到剪贴板！');
+    showToast(pick('已成功复制到剪贴板！', 'Copied to clipboard!'));
   };
 
   // Mobile cycle orbit
@@ -367,7 +386,7 @@ const AppInner: React.FC = () => {
 
   const handleWelcomeInteract = () => {
     audioEngine.playSFX('ripple');
-    showToast('切换了一条粒子文字');
+    showToast(pick('切换了一条粒子文字', 'Particle message switched'));
   };
 
   return (

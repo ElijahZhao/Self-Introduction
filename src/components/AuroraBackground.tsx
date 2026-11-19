@@ -303,6 +303,9 @@ export const AuroraBackground: React.FC<AuroraBackgroundProps> = ({
     dpr
   };
   const settingsRef = useRef(settings);
+  // Mirror, not state: the rAF loop reads the newest settings without re-running
+  // its effect (which would tear the WebGL context down and rebuild it).
+  // eslint-disable-next-line react-hooks/refs
   settingsRef.current = settings;
 
   useEffect(() => {

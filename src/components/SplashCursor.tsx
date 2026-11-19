@@ -1,3 +1,7 @@
+/* eslint-disable react-hooks/rules-of-hooks, react-hooks/refs -- This file is a
+   port of a GPU fluid-simulation demo: the local helpers are named `use(...)`
+   (a GLSL uniform lookup, not React's hook) and keep mutable simulation state in
+   refs read from the rAF loop. Both patterns are intentional here. */
 import React, { useEffect, useRef, useState, type CSSProperties } from 'react';
 
 export interface SplashCursorProps {
