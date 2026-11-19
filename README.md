@@ -35,10 +35,10 @@
 | `char-sports.glb` | 足球运动活力版 | 1.00 MB | 86,584 |
 
 - **资产管线**：连通域抽件（正面带脸副本）→ 减面（≤10 万面）→ 贴图 2K 降采样 WebP → Draco 压缩。
-- 交互环绕物：`saturn.glb`（土星）、`earth_moon.glb`（地月）、`orb-pickup_sphere-transformed.glb`（能量球）为实际加载的 GLB；纸飞机由 `ThreeCanvas` 程序化几何直接生成，不走模型文件。`plane.glb`、`fox.glb` 为早期素材，已停用、仅作存档。
+- 交互环绕物：`saturn.glb`（土星）、`earth_moon.glb`（地月）、`orb-pickup_sphere-transformed.glb`（能量球）为实际加载的 GLB；纸飞机由 `ThreeCanvas` 程序化几何直接生成，不走模型文件。`plane.glb`、`fox.glb` 为早期素材，已停用并移到仓库根目录 `archive/models/`（不进 `dist`、不被浏览器请求）。
 - 装饰环绕物：`orb-planet_5-transformed.glb`（小行星）、`orb-spaceship_finnthefrog-transformed.glb`（小飞船）、`orb-rover_1-transformed.glb`（月球车）、`orb-rover_2-transformed.glb`（探索车），来源 [Quaternius Ultimate Space Kit](https://quaternius.com/packs/ultimatespacekit.html)（CC0-1.0）；`orb-pickup_sphere-transformed.glb`（能量球，可交互，承接技能图谱），同源同授权，均存于 `public/models/`。
 - 场景装饰物：`decor-speeder.glb`（悬浮快艇）、`decor-satellite-dish.glb`（卫星天线）、`decor-astronaut.glb`（宇航员）、`decor-miner.glb`（采矿船）、`decor-meteor.glb`（陨石），来源 [Kenney Space Kit](https://kenney.nl/assets/space-kit)（CC0-1.0，静态 GLB、顶点色无贴图、0 骨骼，渲染确定性），经 Flockbay 免费直链下载，存于 `public/models/`。
-- 场景漫游角色：`Knight.glb`（骑士）、`Mage.glb`（法师），来源 [KayKit — Adventurers](https://kaylousberg.itch.io/adventurers)（CC0-1.0），原生骨骼动画（行走/待机，动画取自 `Rig_Medium_MovementBasic.glb`），沿展台安全带漫游；`Wolf.glb`（白狼）作纯装饰轨道物绕展台运行，来源 [vinceyanez — Sketchfab](https://sketchfab.com/vinceyanez)（**CC-BY 4.0，需署名 vinceyanez**），存于 `public/models/`。`Steve.glb` / `Villager.glb` 为历史素材（vinceyanez CC-BY），已从场景移除并从加载进度清单剔除，文件保留存档。
+- 场景漫游角色：`Knight.glb`（骑士）、`Mage.glb`（法师），来源 [KayKit — Adventurers](https://kaylousberg.itch.io/adventurers)（CC0-1.0），原生骨骼动画（行走/待机，动画取自 `Rig_Medium_MovementBasic.glb`），沿展台安全带漫游；`Wolf.glb`（白狼）作纯装饰轨道物绕展台运行，来源 [vinceyanez — Sketchfab](https://sketchfab.com/vinceyanez)（**CC-BY 4.0，需署名 vinceyanez**），存于 `public/models/`。`Steve.glb` / `Villager.glb` 为历史素材（vinceyanez CC-BY），已从场景移除并从加载进度清单剔除，文件与早期 `Soldier.glb` 一并移到 `archive/models/` 存档（不参与打包与请求，约 2.7 MB）。
 - Draco 解码器本地分发于 `public/draco/`（不依赖 gstatic CDN，大陆可访问）。
 
 ## 🛠️ 项目技术栈
@@ -67,8 +67,20 @@ npm install
 # 启动开发服务器
 npm run dev
 
-# 编译与类型检查
+# 编译与类型检查（tsc + vite build）
 npm run build
+
+# 仅类型检查
+npm run typecheck
+
+# ESLint（真实代码检查，此前该脚本只跑 tsc）
+npm run lint
+
+# 单元测试（vitest，覆盖流量策略等纯逻辑）
+npm run test
+
+# Prettier（按需格式化，仓库尚未全量重排）
+npm run format
 ```
 
 ## 🚀 部署到 GitHub Pages
