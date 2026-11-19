@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef, useMemo, Suspense, lazy } from 'react';
 import { LangProvider, useLang } from './i18n';
 import {
   PersonaId,
@@ -28,6 +28,9 @@ import { LoadingScreen } from './components/LoadingScreen';
 import { AuroraBackground } from './components/AuroraBackground';
 import { SplashCursor } from './components/SplashCursor';
 import { GsapEntrance } from './components/GsapEntrance';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { StageFallback, StageFailureReason } from './components/StageFallback';
+import { isWebGL2Supported } from './utils/webglSupport';
 
 export const App: React.FC = () => (
   <LangProvider>
@@ -36,7 +39,7 @@ export const App: React.FC = () => (
 );
 
 const AppInner: React.FC = () => {
-  const { lang } = useLang();
+  const { lang, pick } = useLang();
   // Theme Mode (Light / Dark)
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     try {
@@ -153,6 +156,33 @@ const AppInner: React.FC = () => {
   const [loadingProgress, setLoadingProgress] = useState(15);
   const [loadingStatusText, setLoadingStatusText] = useState('正在初始化 3D 展台与渲染引擎...');
   const [isLoadingComplete, setIsLoadingComplete] = useState(false);
+
+  // 3D stage availability. A missing WebGL2 context used to throw inside the
+  // stage effect → React unmounted the root → blank page. Probe first, and keep
+  // a runtime channel for context loss / crashed renders.
+  const webglSupported = useMemo(() => isWebGL2Supported(), []);
+  const [stageFailure, setStageFailure] = useState<StageFailureReason | null>(null);
+  // Bumping the key remounts the stage so a retry rebuilds scene state cleanly.
+  const [stageKey, setStageKey] = useState(0);
+
+  const handleReloadStage = () => {
+    setStageFailure(null);
+    setStageKey((k) => k + 1);
+  };
+
+  // The loading overlay only fades at 100%. If the stage can never start, the
+  // overlay must not sit at 15% forever with nothing to click.
+  useEffect(() => {
+    if (!webglSupported || stageFailure) {
+      setLoadingProgress(100);
+      setIsLoadingComplete(true);
+      setLoadingStatusText(
+        webglSupported
+          ? pick('3D 展台已暂停，已切换文字模式', 'Stage paused — switched to text mode')
+          : pick('当前设备不支持 WebGL2，已切换文字模式', 'WebGL2 unavailable — switched to text mode')
+      );
+    }
+  }, [webglSupported, stageFailure]);
 
   // Toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -387,26 +417,47 @@ const AppInner: React.FC = () => {
       )}
 
       {/* 3D WebGL Canvas (lazy: three.js chunk streams in behind the loading screen) */}
-      <Suspense fallback={null}>
-        <ThreeCanvas
-          currentPersona={currentPersona}
-          accessories={accessories}
-          hairColor={hairColor}
-          themeMode={themeMode}
-          activeModelId={activeModelId}
-          onSelectOrbitItem={handleSelectOrbitItem}
-          onHoverOrbitItem={setHoverData}
-          onUpdateBadgeCoords={setBadgeCoords}
-          onWelcomeInteract={handleWelcomeInteract}
-          onModelLoadedMessage={showToast}
-          onLoadProgress={(pct, text) => {
-            setLoadingProgress(pct);          setLoadingStatusText(text);
-          }}
-          onLoadComplete={() => {
-            setIsLoadingComplete(true);
-          }}
+      {webglSupported && !stageFailure ? (
+        <ErrorBoundary
+          onError={() => setStageFailure('crash')}
+          fallback={() => (
+            <StageFallback
+              reason="crash"
+              onRetry={handleReloadStage}
+              onViewText={() => handleSelectOrbitItem('about')}
+            />
+          )}
+        >
+          <Suspense fallback={null}>
+            <ThreeCanvas
+              key={stageKey}
+              currentPersona={currentPersona}
+              accessories={accessories}
+              hairColor={hairColor}
+              themeMode={themeMode}
+              activeModelId={activeModelId}
+              onSelectOrbitItem={handleSelectOrbitItem}
+              onHoverOrbitItem={setHoverData}
+              onUpdateBadgeCoords={setBadgeCoords}
+              onWelcomeInteract={handleWelcomeInteract}
+              onModelLoadedMessage={showToast}
+              onFatalError={(reason) => setStageFailure(reason ?? 'context-lost')}
+              onLoadProgress={(pct, text) => {
+                setLoadingProgress(pct);          setLoadingStatusText(text);
+              }}
+              onLoadComplete={() => {
+                setIsLoadingComplete(true);
+              }}
+            />
+          </Suspense>
+        </ErrorBoundary>
+      ) : (
+        <StageFallback
+          reason={stageFailure || 'unsupported'}
+          onRetry={stageFailure === 'unsupported' ? undefined : handleReloadStage}
+          onViewText={() => handleSelectOrbitItem('about')}
         />
-      </Suspense>
+      )}
 
       {/* Floating 3D Audio Waveform Badge */}
       <FloatingWaveBadge coords={badgeCoords} />
@@ -452,6 +503,7 @@ const AppInner: React.FC = () => {
         themeMode={themeMode}
         activeOrbitModuleId={activeOrbitModuleId}
         immersive={immersive}
+        stageDown={!webglSupported || !!stageFailure}
         onSelectModule={handleSelectOrbitItem}
         onSelectModel={handleSelectModel}
       />

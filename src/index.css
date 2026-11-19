@@ -29,6 +29,13 @@ body.dark {
   color: #f1f5f9;
 }
 
+/* The app shell positions its layers itself; without an explicit height #root
+   collapses to 0 and any `absolute inset-0` child gets clipped away. */
+#root {
+  width: 100%;
+  height: 100%;
+}
+
 #canvas-container {
   position: fixed;
   inset: 0;

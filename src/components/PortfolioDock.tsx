@@ -8,6 +8,8 @@ interface PortfolioDockProps {
   themeMode: ThemeMode;
   activeOrbitModuleId: OrbitModuleId | null;
   immersive: boolean;
+  /** Stage is unavailable (no WebGL2 / failed) — hide 3D drag hints. */
+  stageDown?: boolean;
   onSelectModule: (id: OrbitModuleId) => void;
   onSelectModel: (id: BuiltinModelId) => void;
 }
@@ -17,6 +19,7 @@ export const PortfolioDock: React.FC<PortfolioDockProps> = ({
   themeMode,
   activeOrbitModuleId,
   immersive,
+  stageDown = false,
   onSelectModule,
   onSelectModel,
 }) => {
@@ -32,13 +35,13 @@ export const PortfolioDock: React.FC<PortfolioDockProps> = ({
 
   return (
     <footer className={`fixed bottom-0 left-0 right-0 z-20 px-3 sm:px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] flex flex-col items-center gap-2 pointer-events-none max-w-full transition-opacity duration-300 ${immersive ? 'opacity-0 pointer-events-none' : ''}`}>
-      {/* Interactive Helper Hint */}
-      <div className="glass-pill px-3 py-1 rounded-full text-[11px] flex items-center gap-1.5 shadow-xs pointer-events-auto transition-opacity opacity-90 hover:opacity-100">
+      {/* Interactive Helper Hint — meaningless when the stage cannot render */}
+      {!stageDown && <div className="glass-pill px-3 py-1 rounded-full text-[11px] flex items-center gap-1.5 shadow-xs pointer-events-auto transition-opacity opacity-90 hover:opacity-100">
         <span className="text-sky-500 animate-pulse">●</span>
         <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>
           {t('dock.hint')}
         </span>
-      </div>
+      </div>}
 
       {/* Main Portfolio Navigation Dock: single row on desktop, stacked
           module + persona rows on narrow/mobile screens so nothing is

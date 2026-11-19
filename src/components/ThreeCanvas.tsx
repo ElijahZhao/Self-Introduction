@@ -98,6 +98,8 @@ interface ThreeCanvasProps {
   onLoadProgress?: (progress: number, statusText: string) => void;
   onLoadComplete?: () => void;
   onWelcomeInteract?: () => void;
+  /** Terminal stage failure: GPU context lost, or the protagonist never loaded. */
+  onFatalError?: (reason?: 'context-lost' | 'assets') => void;
 }
 
 export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
@@ -113,6 +115,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   onLoadProgress,
   onLoadComplete,
   onWelcomeInteract,
+  onFatalError,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -209,6 +212,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     onLoadProgress,
     onLoadComplete,
     onWelcomeInteract,
+    onFatalError,
   });
 
   // ── Particle text carousel (ZH/EN mixed, drone-formation re-shuffle) ──
@@ -293,6 +297,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       onLoadProgress,
       onLoadComplete,
       onWelcomeInteract,
+      onFatalError,
     };
   });
 
@@ -712,6 +717,15 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.7;
     rendererRef.current = renderer;
+
+    // GPU context loss (driver reset, sleep/wake, VRAM pressure) does not throw —
+    // it silently freezes the canvas. Escalate it to App so the visitor gets a
+    // readable fallback instead of a dead frame.
+    const handleContextLost = (event: Event) => {
+      event.preventDefault();
+      callbacksRef.current.onFatalError?.('context-lost');
+    };
+    renderer.domElement.addEventListener('webglcontextlost', handleContextLost);
 
     // Orbit controls: drag to orbit around the scene, wheel/pinch to zoom
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -2082,6 +2096,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         controlsRef.current = null;
       }
       domEl.removeEventListener('pointerdown', handlePointerDown);
+      domEl.removeEventListener('webglcontextlost', handleContextLost);
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('resize', handleResize);
@@ -2214,7 +2229,14 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       if (isCancelled) return;
       if (index >= candidateUrls.length) {
         console.error('All model candidate URLs failed to load:', candidateUrls);
-        callbacksRef.current.onModelLoadedMessage?.(pick(`载入 3D 模型【${modelDisplayName}】失败，已保留原模型`,`Failed to load [${modelDisplayName}], keeping current`));
+        // A persona switch keeps the outgoing model, so a toast is enough. On
+        // the very first load there is nothing on the pedestal — a 2.8s toast
+        // would hide the real problem, so escalate to a persistent fallback.
+        if (externalModelRef.current) {
+          callbacksRef.current.onModelLoadedMessage?.(pick(`载入【${modelDisplayName}】失败，已保留当前角色`,`Failed to load [${modelDisplayName}], keeping current`));
+        } else {
+          callbacksRef.current.onFatalError?.('assets');
+        }
         // Mark arrival anyway so the loading screen can never be stuck behind a
         // broken character asset (the release fallback also waits on it).
         reportModelArrived(preset.path);
