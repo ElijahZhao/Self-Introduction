@@ -9,7 +9,7 @@ import {
   ThemeMode,
   BuiltinModelId,
 } from './types';
-import { INITIAL_PROFILE_CONFIG, HAIR_PALETTES } from './data/profileConfig';
+import { INITIAL_PROFILE_CONFIG } from './data/profileConfig';
 import { MODEL_PRESETS, MODEL_IDS } from './data/modelsConfig';
 import { audioEngine } from './services/audioEngine';
 // Three.js is the single heaviest dependency (~1MB min). Code-split it so the
@@ -27,7 +27,6 @@ import { Toast } from './components/Toast';
 import { LoadingScreen } from './components/LoadingScreen';
 import { AuroraBackground } from './components/AuroraBackground';
 import { SplashCursor } from './components/SplashCursor';
-import { GsapEntrance } from './components/GsapEntrance';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { StageFallback, StageFailureReason } from './components/StageFallback';
 import { isWebGL2Supported } from './utils/webglSupport';
@@ -45,7 +44,7 @@ const AppInner: React.FC = () => {
     try {
       const savedTheme = localStorage.getItem('avatar_portfolio_theme');
       if (savedTheme === 'dark' || savedTheme === 'light') return savedTheme;
-    } catch (e) {}
+    } catch {}
     return 'light';
   });
 
@@ -54,14 +53,14 @@ const AppInner: React.FC = () => {
     try {
       const saved = localStorage.getItem('avatar_portfolio_cursor_enabled');
       if (saved === '0') return false;
-    } catch (e) {}
+    } catch {}
     return true;
   });
   const [cursorStyle, setCursorStyle] = useState<'rainbow' | 'star'>(() => {
     try {
       const saved = localStorage.getItem('avatar_portfolio_cursor_style');
       if (saved === 'rainbow' || saved === 'star') return saved;
-    } catch (e) {}
+    } catch {}
     return 'rainbow';
   });
 
@@ -78,7 +77,7 @@ const AppInner: React.FC = () => {
       if (savedModel && (MODEL_IDS as string[]).includes(savedModel)) {
         return savedModel as BuiltinModelId;
       }
-    } catch (e) {}
+    } catch {}
     return 'char-classic-capybara';
   });
 
@@ -91,7 +90,6 @@ const AppInner: React.FC = () => {
   });
 
   const [hairColor, setHairColor] = useState<number>(currentPersona.outfit.hairColor);
-  const [hairIndex, setHairIndex] = useState<number>(0);
 
   // Audio state
   const [bgmPlaying, setBgmPlaying] = useState(false);
@@ -187,7 +185,7 @@ const AppInner: React.FC = () => {
           : pick('当前设备不支持 WebGL2，已切换文字模式', 'WebGL2 unavailable — switched to text mode')
       );
     }
-  }, [webglSupported, stageFailure]);
+  }, [webglSupported, stageFailure, pick]);
 
   // Toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -251,7 +249,7 @@ const AppInner: React.FC = () => {
     setThemeMode(nextTheme);
     try {
       localStorage.setItem('avatar_portfolio_theme', nextTheme);
-    } catch (e) {}
+    } catch {}
     audioEngine.playSFX('mode');
     showToast(
       nextTheme === 'dark'
@@ -275,7 +273,7 @@ const AppInner: React.FC = () => {
     setCursorEnabled(next);
     try {
       localStorage.setItem('avatar_portfolio_cursor_enabled', next ? '1' : '0');
-    } catch (e) {}
+    } catch {}
     audioEngine.playSFX('tap');
     showToast(next ? pick('流体光标已开启 ✨', 'Fluid cursor on ✨') : pick('流体光标已关闭', 'Fluid cursor off'));
   };
@@ -284,7 +282,7 @@ const AppInner: React.FC = () => {
     setCursorStyle(style);
     try {
       localStorage.setItem('avatar_portfolio_cursor_style', style);
-    } catch (e) {}
+    } catch {}
     audioEngine.playSFX('tap');
     showToast(
       style === 'rainbow'
@@ -299,7 +297,7 @@ const AppInner: React.FC = () => {
     setActiveModelId(id);
     try {
       localStorage.setItem('avatar_portfolio_model', id);
-    } catch (e) {}
+    } catch {}
     const preset = MODEL_PRESETS.find((p) => p.id === id);
     if (preset) {
       showToast(
@@ -324,24 +322,6 @@ const AppInner: React.FC = () => {
 
     showToast(
       `${pick('已切换身份：', 'Persona switched: ')}${pick(newPersona.name, newPersona.nameEn || newPersona.name)}`
-    );
-  };
-
-  const handleToggleAccessory = (key: keyof AccessoryState) => {
-    audioEngine.playSFX('tap');
-    setAccessories((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
-  };
-
-  const handleCycleHairColor = () => {
-    audioEngine.playSFX('tap');
-    const nextIdx = (hairIndex + 1) % HAIR_PALETTES.length;
-    setHairIndex(nextIdx);
-    setHairColor(HAIR_PALETTES[nextIdx]);
-    showToast(
-      `${pick('发色已切换', 'Hair color changed')} (${nextIdx + 1}/${HAIR_PALETTES.length})`
     );
   };
 
@@ -373,15 +353,6 @@ const AppInner: React.FC = () => {
     navigator.clipboard?.writeText(text);
     audioEngine.playSFX('tap');
     showToast(pick('已成功复制到剪贴板！', 'Copied to clipboard!'));
-  };
-
-  // Mobile cycle orbit
-  const orbitOrder: OrbitModuleId[] = ['about', 'projects', 'hobbies', 'contact'];
-  const [mobileOrbitIndex, setMobileOrbitIndex] = useState(0);
-  const handleCycleOrbitMobile = () => {
-    const nextId = orbitOrder[mobileOrbitIndex % orbitOrder.length];
-    setMobileOrbitIndex((prev) => prev + 1);
-    handleSelectOrbitItem(nextId);
   };
 
   const handleWelcomeInteract = () => {

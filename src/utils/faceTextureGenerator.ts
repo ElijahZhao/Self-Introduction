@@ -203,8 +203,6 @@ export function createAnimeFaceTexture(): THREE.CanvasTexture {
     ctx.lineCap = 'round';
     ctx.strokeStyle = '#2d1d17';
     ctx.beginPath();
-    const lashStart = isLeft ? cx - eyeWidth * 0.58 : cx - eyeWidth * 0.48;
-    const lashEnd = isLeft ? cx + eyeWidth * 0.48 : cx + eyeWidth * 0.58;
     ctx.arc(cx, cy - 25, eyeWidth * 0.54, 1.15 * Math.PI, 1.88 * Math.PI);
     ctx.stroke();
 

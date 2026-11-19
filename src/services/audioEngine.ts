@@ -228,7 +228,7 @@ class AudioEngineService {
       audio.onended = () => this.notifySpeaking(false);
       try {
         audio.currentTime = 0;
-      } catch (e) {
+      } catch {
         /* not seekable yet */
       }
       audio.play().catch(onError);

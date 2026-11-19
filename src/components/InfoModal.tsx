@@ -64,7 +64,8 @@ export const InfoModal: React.FC<InfoModalProps> = ({
   useEffect(() => {
     if (!isOpen || !moduleId) return;
     const previous = document.activeElement as HTMLElement | null;
-    cardRef.current?.focus();
+    const card = cardRef.current;
+    card?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.stopPropagation();
@@ -78,7 +79,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
       // `previous` as body; blurring the card is better than parking focus on an
       // element that is about to be hidden.
       if (previous && previous !== document.body) previous.focus?.();
-      else cardRef.current?.blur();
+      else card?.blur();
     };
   }, [isOpen, moduleId, onClose]);
 

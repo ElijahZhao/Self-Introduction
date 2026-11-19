@@ -190,7 +190,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   const releasedRef = useRef(false);
   const releaseTimerRef = useRef<number | null>(null);
   const perfFrameRef = useRef(0);
-  const { lang, pick } = useLang();
+  const { pick } = useLang();
   // Current character path, readable from the loading orchestration callbacks
   // (force-release fallback must wait for the protagonist, never release an
   // empty pedestal ahead of it).
@@ -287,6 +287,9 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       setTextMessage(PARTICLE_TEXTS[textIndexRef.current]);
     }, 10000);
     return () => clearInterval(interval);
+    // PARTICLE_TEXTS is a module-level constant: its identity never changes, so
+    // listing it only invites the rule to re-judge the interval forever.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -361,7 +364,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         .then((buf) => {
           try {
             THREE.Cache.add(url, buf);
-          } catch (e) {}
+          } catch {}
         })
         .catch(() => {});
     });
@@ -423,14 +426,14 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       gsap.to(scene.position, { y: y0, duration: 0.55, ease: 'power2.out' });
     },
     // 2. Side turn-in: swing around from a half-rotation
-    (scene, s0, y0) => {
+    (scene, s0, _y0) => {
       scene.rotation.y = -Math.PI / 2;
       scene.scale.setScalar(s0 * 0.85);
       gsap.to(scene.rotation, { y: 0, duration: 0.7, ease: 'power2.out' });
       gsap.to(scene.scale, { x: s0, y: s0, z: s0, duration: 0.7, ease: 'back.out(1.6)' });
     },
     // 3. Zoom fade: pure scale-up from 0.5
-    (scene, s0, y0) => {
+    (scene, s0, _y0) => {
       scene.scale.setScalar(s0 * 0.5);
       gsap.to(scene.scale, { x: s0, y: s0, z: s0, duration: 0.6, ease: 'power2.out' });
     },
@@ -470,7 +473,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       }
       hidden.remove(scene);
       gpuWarmedRef.current.add(path);
-    } catch (e) {}
+    } catch {}
   };
 
   // Decode the other 4 character GLBs in the background (DRACO + material
@@ -519,7 +522,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
                 prepareCharacterScene(gltf.scene);
                 characterSceneCacheRef.current.set(p.path, gltf.scene);
                 gpuPreWarmScene(p.path, gltf.scene);
-              } catch (e) {}
+              } catch {}
             },
             undefined,
             () => {}
@@ -628,13 +631,6 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       timer: 0,
       duration: 0.35,
     });
-  };
-
-  // Trigger blue 3D ripple around orbit item
-  const trigger3DRippleAt = (targetGroup: THREE.Group) => {
-    activeOrbitTargetRef.current = targetGroup;
-    spawn3DShockwave(targetGroup.position, currentPersona.orbitColor || 0x38bdf8);
-    elasticPunchItem(targetGroup);
   };
 
   // Burst particles for dress-up sparkles
@@ -921,7 +917,17 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     // -------------------------------------------------------------------------
     orbitingItemsRef.current = [];
 
-    const registerItem = (group: THREE.Group, meta: any) => {
+    interface OrbitItemMeta {
+      id?: string;
+      emoji?: string;
+      label?: string;
+      radius?: number;
+      angle?: number;
+      speed?: number;
+      baseY?: number;
+      orientToTangent?: boolean;
+    }
+    const registerItem = (group: THREE.Group, meta: OrbitItemMeta) => {
       const isDecorative = !meta.id;
       if (!isDecorative) {
         const collider = new THREE.Mesh(
@@ -1594,8 +1600,8 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         textCollider.scale.set(2.6, 0.9, 1.2);
         textGroup.add(textCollider);
         textColliderRef.current = textCollider;
-    } catch (e) {
-      console.warn('Drone text generation failed:', e);
+    } catch (error) {
+      console.warn('Drone text generation failed:', error);
     }
 
     // -------------------------------------------------------------------------
@@ -2108,6 +2114,10 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         container.removeChild(domEl);
       }
     };
+    // One-shot scene construction: props read inside are captured at mount time
+    // and are updated by their own effects; adding them here would rebuild the
+    // entire WebGL stage on every persona/theme change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Update theme lighting, pedestal & rings
@@ -2380,6 +2390,10 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     return () => {
       isCancelled = true;
     };
+    // Keyed on the selected character only: entrance animations, pick() and the
+    // warm-cache helpers are read through refs/closures and must not restart the
+    // load (that would re-download the GLB on every language toggle).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeModelId]);
 
   return <div id="canvas-container" ref={containerRef} aria-label="3D 角色与星轨交互画布" />;

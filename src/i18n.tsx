@@ -78,7 +78,7 @@ export const LangProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (saved === 'zh' || saved === 'en') return saved;
       // Browser language heuristic for first visit
       return navigator.language?.toLowerCase().startsWith('zh') ? 'zh' : 'en';
-    } catch (e) {
+    } catch {
       return 'zh';
     }
   });
@@ -88,7 +88,7 @@ export const LangProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const next: Lang = prev === 'zh' ? 'en' : 'zh';
       try {
         localStorage.setItem(STORAGE_KEY, next);
-      } catch (e) {}
+      } catch {}
       return next;
     });
   }, []);

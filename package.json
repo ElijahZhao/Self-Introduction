@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 3000",
     "build": "tsc && vite build",
-    "lint": "eslint src --max-warnings 999",
+    "lint": "eslint src --max-warnings 0",
     "preview": "vite preview --port 3000",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
