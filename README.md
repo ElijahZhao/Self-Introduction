@@ -81,7 +81,19 @@ npm run test
 
 # Prettier（按需格式化，仓库尚未全量重排）
 npm run format
+
+# 产物体积预算（超限即失败）
+npm run check:size
+
+# 端到端冒烟（Playwright：舞台渲染、深链、返回键、系统深色、语言标记）
+npm run test:e2e
 ```
+
+## 🔗 深链与可发现性
+
+- 四个板块可直接分享：`?p=about`、`?p=projects`、`?p=hobbies`、`?p=contact`；手机返回键关闭卡片而不是退出站点，`Esc` 同样有效。
+- 页面为画布应用，`index.html` 内置一段视觉隐藏但可被读屏与爬虫读取的文字摘要，以及 `Person` / `WebSite` 结构化数据；`public/robots.txt`、`sitemap.xml` 随构建发布。
+- 首次访问的主题跟随系统 `prefers-color-scheme`，手动切换后以 `localStorage` 为准；切换中英文会同步更新 `<html lang>`。
 
 ## 🚀 部署到 GitHub Pages
 

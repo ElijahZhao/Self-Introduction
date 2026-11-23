@@ -14,14 +14,70 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="canonical" href="https://elijahzhao.github.io/Self-Introduction/" />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-  <meta name="theme-color" content="#f5f6f9" />
+  <meta name="author" content="Elijah Zhao" />
+  <meta name="theme-color" content="#f5f6f9" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0d1220" media="(prefers-color-scheme: dark)" />
+  <meta name="keywords" content="Elijah Zhao,3D portfolio,Three.js,React,TypeScript,AI,个人作品集" />
   <!-- Fonts are intentionally local: index.css declares a system stack for Latin
        + CJK, so this page makes no third-party font request at all. Pulling
        Inter/Noto Sans SC from a foreign font CDN produced a slow FOUT on
        mainland networks and contradicted the "works without a foreign CDN"
        design of this site. -->
+  <!-- Structured data: the site is a canvas app, and without this a crawler only
+       sees a title and an empty #root. Person/WebSite keep the identity machine
+       readable. Keep it in sync with the visible summary below. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Person",
+        "@id": "https://elijahzhao.github.io/Self-Introduction/#person",
+        "name": "Elijah Zhao",
+        "url": "https://elijahzhao.github.io/Self-Introduction/",
+        "jobTitle": "人工智能专业本科生 · 前端 / 3D 可视化开发者",
+        "alumniOf": { "@type": "CollegeOrUniversity", "name": "河南财经政法大学" },
+        "knowsAbout": ["Three.js", "React", "TypeScript", "RAG", "推荐系统", "数据可视化"],
+        "sameAs": [
+          "https://github.com/ElijahZhao",
+          "https://github.com/Elijah-Lin-Dancer"
+        ]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://elijahzhao.github.io/Self-Introduction/#website",
+        "url": "https://elijahzhao.github.io/Self-Introduction/",
+        "name": "3D 互动换装个人星轨展台",
+        "inLanguage": "zh-CN",
+        "author": { "@id": "https://elijahzhao.github.io/Self-Introduction/#person" }
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
+  <!-- Text alternative for non-JS crawlers and screen readers: the 3D stage itself
+       is invisible to both. Visually hidden, never padded with keywords. -->
+  <div id="static-intro" class="sr-only">
+    <h1>Elijah Zhao · 3D 互动个人星轨展台</h1>
+    <p>
+      我是 Elijah Zhao，河南财经政法大学人工智能专业本科生，关注前端工程、Three.js 三维可视化
+      与 AI 应用（检索增强生成、推荐系统）。这个展台用手办角色、星轨环绕物和语音讲解来介绍
+      我的经历与项目，全部为纯前端实现，可直接在浏览器中运行。
+    </p>
+    <h2>展台板块</h2>
+    <ul>
+      <li><a href="?p=about">关于我</a>：教育背景、公开可查的经历与专注方向。</li>
+      <li><a href="?p=projects">代表作品</a>：开源项目与实习中的工程实践。</li>
+      <li><a href="?p=hobbies">技能图谱</a>：技术栈与工具链。</li>
+      <li><a href="?p=contact">联络交流</a>：GitHub 与邮件联系方式。</li>
+    </ul>
+    <h2>代码仓库</h2>
+    <ul>
+      <li><a href="https://github.com/ElijahZhao">GitHub · ElijahZhao</a>（主账号）</li>
+      <li><a href="https://github.com/Elijah-Lin-Dancer">GitHub · Elijah-Lin-Dancer</a>（游戏开发）</li>
+    </ul>
+  </div>
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
 </body>

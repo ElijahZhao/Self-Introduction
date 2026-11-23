@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
 export type Lang = 'zh' | 'en';
 
@@ -82,6 +82,13 @@ export const LangProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return 'zh';
     }
   });
+
+  // Announce the active language to the document itself: screen readers pick
+  // pronunciation from <html lang>, and search engines use it for language
+  // targeting. The attribute was hard-coded to zh-CN before.
+  useEffect(() => {
+    document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+  }, [lang]);
 
   const toggleLang = useCallback(() => {
     setLang((prev) => {

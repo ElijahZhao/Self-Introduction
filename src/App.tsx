@@ -37,6 +37,19 @@ export const App: React.FC = () => (
   </LangProvider>
 );
 
+// View & Modal state. A module can be opened straight from the URL (?p=about),
+// which makes each section shareable and lets the phone back button close the
+// card instead of leaving the site.
+const MODULE_IDS: OrbitModuleId[] = ['about', 'projects', 'hobbies', 'contact'];
+const readModuleFromUrl = (): OrbitModuleId | null => {
+  try {
+    const value = new URLSearchParams(window.location.search).get('p');
+    return value && (MODULE_IDS as string[]).includes(value) ? (value as OrbitModuleId) : null;
+  } catch {
+    return null;
+  }
+};
+
 const AppInner: React.FC = () => {
   const { lang, pick } = useLang();
   // Theme Mode (Light / Dark)
@@ -44,6 +57,11 @@ const AppInner: React.FC = () => {
     try {
       const savedTheme = localStorage.getItem('avatar_portfolio_theme');
       if (savedTheme === 'dark' || savedTheme === 'light') return savedTheme;
+    } catch {}
+    // First visit: respect the OS preference instead of forcing a bright stage
+    // into someone who runs a dark desktop.
+    try {
+      if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) return 'dark';
     } catch {}
     return 'light';
   });
@@ -97,8 +115,12 @@ const AppInner: React.FC = () => {
   const [sfxEnabled, setSfxEnabled] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  // View & Modal state
-  const [activeOrbitModuleId, setActiveOrbitModuleId] = useState<OrbitModuleId | null>(null);
+  const initialDeepLink = useMemo(() => readModuleFromUrl(), []);
+  const pendingDeepLinkRef = useRef<OrbitModuleId | null>(initialDeepLink);
+  const pushedByModalRef = useRef(false);
+  const [activeOrbitModuleId, setActiveOrbitModuleId] = useState<OrbitModuleId | null>(
+    initialDeepLink
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Immersive fullscreen: once the browser enters fullscreen, hide all
@@ -325,17 +347,73 @@ const AppInner: React.FC = () => {
     );
   };
 
-  const handleSelectOrbitItem = (moduleId: OrbitModuleId) => {
-    audioEngine.playSFX('ripple');
+  // Open a module and mirror it into the URL. `push` is skipped when the URL
+  // already points at this module (deep-link boot) so closing it does not eat a
+  // history entry that was never pushed.
+  const openModuleCard = (moduleId: OrbitModuleId, options?: { push?: boolean }) => {
+    const inUrl = readModuleFromUrl();
     setActiveOrbitModuleId(moduleId);
     setIsModalOpen(true);
+    if (options?.push === false || inUrl === moduleId) return;
+    try {
+      window.history.pushState({ module: moduleId }, '', `?p=${moduleId}`);
+      pushedByModalRef.current = true;
+    } catch {}
+  };
+
+  const closeModuleCard = (options?: { fromPop?: boolean }) => {
+    setIsModalOpen(false);
+    if (options?.fromPop) return;
+    if (pushedByModalRef.current) {
+      // Let the browser pop the entry we pushed; popstate then syncs our state.
+      pushedByModalRef.current = false;
+      try {
+        window.history.back();
+      } catch {}
+      return;
+    }
+    // Direct deep-link entry: drop the query instead of leaving the page.
+    try {
+      window.history.replaceState(null, '', window.location.pathname);
+    } catch {}
+  };
+
+  const handleSelectOrbitItem = (moduleId: OrbitModuleId) => {
+    audioEngine.playSFX('ripple');
+    openModuleCard(moduleId);
   };
 
   const handleCloseModal = () => {
     audioEngine.stopVoice();
     audioEngine.playSFX('close');
-    setIsModalOpen(false);
+    closeModuleCard();
   };
+
+  // Browser back/forward drives the card, not the page.
+  useEffect(() => {
+    const onPopState = () => {
+      pushedByModalRef.current = false;
+      const moduleId = readModuleFromUrl();
+      if (moduleId) {
+        setActiveOrbitModuleId(moduleId);
+        setIsModalOpen(true);
+      } else {
+        setIsModalOpen(false);
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  // A shared ?p=about link opens the card once the stage is allowed to show;
+  // opening it behind the loading overlay would just look like a black screen.
+  useEffect(() => {
+    if (!isLoadingComplete) return;
+    const pending = pendingDeepLinkRef.current;
+    if (!pending) return;
+    pendingDeepLinkRef.current = null;
+    openModuleCard(pending, { push: false });
+  }, [isLoadingComplete]);
 
   const handlePlayVoice = (text: string, voiceKey?: string) => {
     if (isSpeaking) {
