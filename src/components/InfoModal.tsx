@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { OrbitModuleId, PersonaConfig, PersonaId, ThemeMode } from '../types';
 import { useLang } from '../i18n';
+import { track } from '../utils/analytics';
 
 interface InfoModalProps {
   isOpen: boolean;
@@ -237,6 +238,19 @@ export const InfoModal: React.FC<InfoModalProps> = ({
                         isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-800 text-white hover:bg-slate-700'
                       }`}>
                       🐙 {pick('源码', 'Source')}
+                    </a>
+                    {/* Static, JS-free page generated at build time: link previews
+                        and crawlers can read it, and it is shareable on its own. */}
+                    <a
+                      href={`./work/${proj.slug}.html`}
+                      onClick={() => track('project_page_open', proj.slug)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer ${
+                        isDark
+                          ? 'bg-slate-700/60 text-slate-300 hover:bg-slate-600'
+                          : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      📄 {pick('详情页', 'Project page')}
                     </a>
                   </div>
                 </div>

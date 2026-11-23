@@ -1,0 +1,27 @@
+{
+  "name": "Elijah Zhao · 3D 星轨展台",
+  "short_name": "星轨展台",
+  "description": "3D 互动个人作品集：手办角色、同心星轨环绕物与语音讲解，纯前端实现。",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0d1220",
+  "theme_color": "#0d1220",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

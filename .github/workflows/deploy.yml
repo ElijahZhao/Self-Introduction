@@ -39,6 +39,9 @@ jobs:
           npm run lint
           npm run test
 
+      - name: Content schema
+        run: npm run check:content
+
       - name: Build
         run: npm run build
 
@@ -48,6 +51,12 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
         timeout-minutes: 10
+
+      - name: Static work pages present
+        run: |
+          for f in dist/work/*.html; do test -s "$f" || { echo "missing $f"; exit 1; }; done
+          test -s dist/sw.js
+          echo "work pages + sw.js OK"
 
       - name: E2E smoke (stage, deep links, back button, theme, lang)
         run: npm run test:e2e

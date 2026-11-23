@@ -10,6 +10,8 @@ export interface ActionLink {
 }
 
 export interface ProjectItem {
+  /** Stable URL segment for the generated static detail page (/work/<slug>.html). */
+  slug: string;
   name: string;
   nameEn?: string;
   tagline: string;

@@ -12,6 +12,7 @@ import {
 import { INITIAL_PROFILE_CONFIG } from './data/profileConfig';
 import { MODEL_PRESETS, MODEL_IDS } from './data/modelsConfig';
 import { audioEngine } from './services/audioEngine';
+import { track } from './utils/analytics';
 // Three.js is the single heaviest dependency (~1MB min). Code-split it so the
 // first paint is just the UI shell + loading screen; the 3D stage (and all of
 // three) loads while the visitor is already watching progress.
@@ -332,6 +333,7 @@ const AppInner: React.FC = () => {
     if (id === currentPersonaId) return;
     audioEngine.playSFX('dressup');
     setCurrentPersonaId(id);
+    track('persona_switch', id);
 
     const newPersona = profileConfig.personas[id];
     setAccessories({
@@ -351,6 +353,7 @@ const AppInner: React.FC = () => {
   // already points at this module (deep-link boot) so closing it does not eat a
   // history entry that was never pushed.
   const openModuleCard = (moduleId: OrbitModuleId, options?: { push?: boolean }) => {
+    track('module_open', moduleId);
     const inUrl = readModuleFromUrl();
     setActiveOrbitModuleId(moduleId);
     setIsModalOpen(true);
@@ -388,6 +391,11 @@ const AppInner: React.FC = () => {
     audioEngine.playSFX('close');
     closeModuleCard();
   };
+
+  // One page view per load. No cookies, no IDs — see src/utils/analytics.ts.
+  useEffect(() => {
+    track('page_view');
+  }, []);
 
   // Browser back/forward drives the card, not the page.
   useEffect(() => {

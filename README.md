@@ -82,12 +82,32 @@ npm run test
 # Prettier（按需格式化，仓库尚未全量重排）
 npm run format
 
+# 内容 schema 校验（projects.json：version、slug 唯一性、必填字段、URL 格式）
+npm run check:content
+
 # 产物体积预算（超限即失败）
 npm run check:size
 
 # 端到端冒烟（Playwright：舞台渲染、深链、返回键、系统深色、语言标记）
 npm run test:e2e
 ```
+
+## 🧩 内容即配置
+
+项目卡片的内容不写在组件里，而是放在 `src/data/projects.json`：
+
+```json
+{ "version": 1, "updatedAt": "2026-11-23", "projects": [ { "slug": "cinerec", "...": "..." } ] }
+```
+
+- 每个项目必须有唯一 `slug`（kebab-case），它同时决定静态详情页的地址 `/work/<slug>.html`。新增项目只要改这一个文件，构建时会自动生成详情页并重写 `sitemap.xml`。
+- `npm run check:content` 校验结构和必填项（`name`/`tagline`/`desc`/`repoUrl`/`tech`/`highlights`），CI 在构建前执行，字段写错会直接拦住部署。
+- 详情页是纯 HTML、零 JS、无第三方依赖，带 `CreativeWork` 结构化数据与中英摘要；弹窗里每张项目卡右下角的「📄 详情页」指向它。设计上它只做摘要，不复制正文，避免同一内容两处维护。
+
+## 📶 离线与统计（都可关闭）
+
+- **PWA 离线壳**：构建产物包含 `sw.js` 与 `manifest.webmanifest`，可添加到主屏。导航请求走 network-first（新版本永远不会被旧缓存挡住），`/assets/`、`/models/`、`/draco/`、`/audio/` 走 stale-while-revalidate；每次构建用新的 cache id 并清掉旧缓存。开发模式下不注册 Service Worker。
+- **访问统计**：`src/utils/analytics.ts` 默认静默。只有构建时设置 `VITE_ANALYTICS_ENDPOINT=https://你的收集地址` 才会发送，内容仅 `event / path / lang / ts / detail`（无 Cookie、无访客 ID），并尊重 `Do Not Track`。事件有 `page_view`、`module_open`、`persona_switch`、`project_page_open`；收集端一个能收 JSON POST 的函数即可，不接第三方时保持不配置就完全没有请求。
 
 ## 🔗 深链与可发现性
 
