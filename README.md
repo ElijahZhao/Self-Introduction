@@ -83,13 +83,13 @@
 
 | 能力 | 实现 | 怎么验证 |
 |---|---|---|
-| 3D 星轨舞台 | Three.js 场景 + `OrbitControls` 视角漫游；角色待机呼吸由 `characterPivot` 位移驱动；四个交互环绕物 + 九个装饰环绕物沿同心轨道运行 | 同时渲染 3 个 canvas（舞台 / 极光背景 / 流体光标），无 `pageerror` |
-| 角色与身份联动 | 5 个 GLB 主角、底部导航坞切换；其余角色在当前主角加载完成后后台预取，切换不再二次请求 | 切换后 `localStorage` 记住选择，模型秒切 |
-| 声音交互 | Tone.js 实时合成 BGM 与 UI 音效；弹窗优先播放真人语音，缺失时回退 Web Speech API | 首次手势后 AudioContext 正常唤醒 |
-| 失败态兜底 | `ErrorBoundary` + `StageFallback` 四种原因（无 WebGL2 / 上下文丢失 / 模型失败 / 组件异常），带重试与文字介绍入口 | 禁用 WebGL2、注入 `WEBGL_lose_context`、模型 404 三种场景均有可读卡片 |
-| 移动端适配 | 竖屏单独缩放取景（`orbitWorld` + 0.6 缩放）；弹窗正文滚动提示；手机返回键关闭卡片而不是退出站点 | 390×844 与 1440×900 两档截图比对 |
-| 可发现性 | `index.html` 内置视觉隐藏但可爬取的中英正文、`Person` / `WebSite` JSON-LD、`LICENSE`、robots、sitemap 与 7 条静态作品页 | 搜索抓取看到正文；`/work/*.html` 直接 200 |
-| 离线与统计 | manifest + 手写 Service Worker；统计默认静默，配置 `VITE_ANALYTICS_ENDPOINT` 后才发送，无 Cookie、尊重 DNT | 断网重载首页与作品页均 200；未配置时产物中 0 处上报端点 |
+| 3D 舞台 | Three.js 场景 + `OrbitControls` 视角漫游；角色待机呼吸由 `characterPivot` 位移驱动；四个交互环绕物 + 九个装饰环绕物沿同心轨道运行 | 同时渲染 3 个 canvas（舞台 / 极光背景 / 流体光标），无 `pageerror` |
+| 角色切换 | 5 个 GLB 主角、底部导航坞切换；其余角色在当前主角加载完成后后台预取，切换不再二次请求 | 切换后 `localStorage` 记住选择，模型秒切 |
+| 声音 | Tone.js 实时合成 BGM 与 UI 音效；弹窗优先播放真人语音，缺失时回退 Web Speech API | 首次手势后 AudioContext 正常唤醒 |
+| 失败兜底 | `ErrorBoundary` + `StageFallback` 四种原因（无 WebGL2 / 上下文丢失 / 模型失败 / 组件异常），带重试与文字介绍入口 | 禁用 WebGL2、注入 `WEBGL_lose_context`、模型 404 三种场景均有可读卡片 |
+| 移动端 | 竖屏单独缩放取景（`orbitWorld` + 0.6 缩放）；弹窗正文滚动提示；手机返回键关闭卡片而不是退出站点 | 390×844 与 1440×900 两档截图比对 |
+| 可发现 | `index.html` 内置视觉隐藏但可爬取的中英正文、`Person` / `WebSite` JSON-LD、`LICENSE`、robots、sitemap 与 7 条静态作品页 | 搜索抓取看到正文；`/work/*.html` 直接 200 |
+| 离线 / 统计 | manifest + 手写 Service Worker；统计默认静默，配置 `VITE_ANALYTICS_ENDPOINT` 后才发送，无 Cookie、尊重 DNT | 断网重载首页与作品页均 200；未配置时产物中 0 处上报端点 |
 
 <a id="architecture"></a>
 
