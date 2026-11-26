@@ -1,127 +1,248 @@
-# 🪐 3D 互动个人星轨展台 (Interactive 3D Avatar Portfolio)
+<p align="center">
+  <a href="https://elijahzhao.github.io/Self-Introduction/">
+    <img src="docs/readme-banner.jpg" alt="3D 互动个人星轨展台：手办主角、星轨环绕物与四个可分享板块" width="100%" />
+  </a>
+</p>
 
-![展台预览](docs/preview.jpg)
+<h1 align="center">3D 互动个人星轨展台</h1>
 
-采用 **React + Vite + TypeScript + Three.js + Tone.js + Tailwind CSS** 构建的轻量级游戏化 3D 个人展台与介绍网站，**纯前端、零后端架构**，可直接本地运行或构建静态文件部署至 GitHub Pages、Vercel 等平台。
+<p align="center">
+  <strong>把手办角色、星轨环绕物和语音讲解放进一个纯前端的 3D 作品集。</strong><br />
+  四个板块可深链分享 · 中英双语 · WebGL2 失败可降级 · PWA 离线壳 · 零后端
+</p>
 
-## ✨ 核心功能亮点
+<p align="center">
+  <a href="https://github.com/ElijahZhao/Self-Introduction/actions/workflows/deploy.yml">
+    <img src="https://github.com/ElijahZhao/Self-Introduction/actions/workflows/deploy.yml/badge.svg?branch=main" alt="Deploy to GitHub Pages" />
+  </a>
+  <img src="https://img.shields.io/badge/license-MIT-2ea44f?style=flat-square" alt="MIT License" />
+  <img src="https://img.shields.io/badge/PWA-offline--ready-5ba8ff?style=flat-square" alt="PWA offline ready" />
+  <img src="https://img.shields.io/badge/stack-React%2018%20%7C%20Three.js%20r160-111827?style=flat-square" alt="React 18 + Three.js r160" />
+</p>
 
-1. **5 个 Q 版手办主角团（底部导航坞切换，默认「电竞抱卡皮巴拉版」）**
-   - 角色模型为静态 GLB（无骨骼动画），待机呼吸浮动由 `ThreeCanvas` 的 `characterPivot` 位移实现。
-   - 场景支持 **OrbitControls 视角漫游**：拖拽环绕场景、滚轮/双指缩放，俯仰与距离受限防止穿地穿模。
-2. **4 大交互环绕物 + 9 个装饰环绕物 + 同心发光星轨 + 声波涟漪弹窗**
-   - **🪐 土星（关于我）**、**✈️ 折纸飞机（作品与经历）**、**🎧 地月（联络交流）**、**🔮 能量球（技能图谱）** 沿轨道环绕运行，点击触发声波涟漪弹窗。
-   - **纯装饰环绕物**（不参与交互）：🪨 小行星、🚀 小飞船、🛰️ 月球车、🚙 探索车（[Quaternius Ultimate Space Kit](https://quaternius.com/packs/ultimatespacekit.html) CC0-1.0）；🏎️ 悬浮快艇、📡 卫星天线、🧑‍🚀 宇航员、⛏️ 采矿船、☄️ 陨石（[Kenney Space Kit](https://kenney.nl/assets/space-kit) CC0-1.0，静态 GLB、顶点色无贴图），沿内外层轨道点缀。
-   - **🛸 无人机列阵欢迎文字**：场景前方悬浮"欢迎来访者"粒子文字（Canvas 像素采样生成），缓慢浮动呼吸；**悬停时粒子放大，点击触发粒子绽放 + 欢迎语播报**。
-3. **三层声音交互系统**
-   - **全局治愈 BGM**：基于 [Tone.js](https://github.com/Tonejs/Tone.js) 实时合成轻柔钢琴/八音盒旋律。
-   - **清脆游戏 UI 音效**：悬停、点击水滴声波、弹窗开合音效。
-   - **弹窗 🔊 真人语音 / 智能中文朗读（TTS）**：优先播放配置的真人语音文件，未配置时调用浏览器原生 Web Speech API 朗读卡片内容。
-4. **页面活力装饰**（不参与交互）
-   - WebGL2 极光背景（`AuroraBackground`）、全屏流体光标（`SplashCursor`）、GSAP 入场动画、场景内环绕粒子场。
+<p align="center">
+  <a href="https://elijahzhao.github.io/Self-Introduction/"><strong>🚀 在线展台</strong></a> ·
+  <a href="https://elijahzhao.github.io/Self-Introduction/?p=about">关于我</a> ·
+  <a href="https://elijahzhao.github.io/Self-Introduction/?p=projects">代表作品</a> ·
+  <a href="https://elijahzhao.github.io/Self-Introduction/?p=hobbies">技能图谱</a> ·
+  <a href="https://elijahzhao.github.io/Self-Introduction/?p=contact">联络交流</a>
+</p>
 
-## 🧸 3D 主角团与模型来源
+<p align="center">
+  简体中文 | <a href="README.en.md">English</a>
+</p>
 
-5 个 Q 版手办角色由需求方自备，**来源链（披露）**：
+---
 
-> **即梦 AI 生成三视图 → 腾讯混元 3D 生成模型 → 需求方本人所有**
+## 目录
 
-| 文件（`public/models/`） | 名称 | 体积 | 三角面 |
-|---|---|---|---|
-| `char-classic-capybara.glb` | 电竞抱卡皮巴拉版（默认） | 738 KB | 81,544 |
-| `char-scholar.glb` | 学霸版 | 812 KB | 87,202 |
-| `char-worker.glb` | 打工人版 | 744 KB | 88,076 |
-| `char-home.glb` | 居家慵懒版 | 826 KB | 89,540 |
-| `char-sports.glb` | 足球运动活力版 | 1.00 MB | 86,584 |
+- [这是什么](#what-is-this)
+- [界面一览](#screens)
+- [核心能力](#what-it-does)
+- [架构](#architecture)
+- [快速开始](#quick-start)
+- [质量门禁](#quality-gates)
+- [内容即配置](#content-as-configuration)
+- [部署与离线能力](#deployment-and-offline)
+- [已知限制](#known-limits)
+- [维护状态](#maintenance-status)
+- [许可与资产](#license-and-assets)
 
-- **资产管线**：连通域抽件（正面带脸副本）→ 减面（≤10 万面）→ 贴图 2K 降采样 WebP → Draco 压缩。
-- 交互环绕物：`saturn.glb`（土星）、`earth_moon.glb`（地月）、`orb-pickup_sphere-transformed.glb`（能量球）为实际加载的 GLB；纸飞机由 `ThreeCanvas` 程序化几何直接生成，不走模型文件。`plane.glb`、`fox.glb` 为早期素材，已停用并移到仓库根目录 `archive/models/`（不进 `dist`、不被浏览器请求）。
-- 装饰环绕物：`orb-planet_5-transformed.glb`（小行星）、`orb-spaceship_finnthefrog-transformed.glb`（小飞船）、`orb-rover_1-transformed.glb`（月球车）、`orb-rover_2-transformed.glb`（探索车），来源 [Quaternius Ultimate Space Kit](https://quaternius.com/packs/ultimatespacekit.html)（CC0-1.0）；`orb-pickup_sphere-transformed.glb`（能量球，可交互，承接技能图谱），同源同授权，均存于 `public/models/`。
-- 场景装饰物：`decor-speeder.glb`（悬浮快艇）、`decor-satellite-dish.glb`（卫星天线）、`decor-astronaut.glb`（宇航员）、`decor-miner.glb`（采矿船）、`decor-meteor.glb`（陨石），来源 [Kenney Space Kit](https://kenney.nl/assets/space-kit)（CC0-1.0，静态 GLB、顶点色无贴图、0 骨骼，渲染确定性），经 Flockbay 免费直链下载，存于 `public/models/`。
-- 场景漫游角色：`Knight.glb`（骑士）、`Mage.glb`（法师），来源 [KayKit — Adventurers](https://kaylousberg.itch.io/adventurers)（CC0-1.0），原生骨骼动画（行走/待机，动画取自 `Rig_Medium_MovementBasic.glb`），沿展台安全带漫游；`Wolf.glb`（白狼）作纯装饰轨道物绕展台运行，来源 [vinceyanez — Sketchfab](https://sketchfab.com/vinceyanez)（**CC-BY 4.0，需署名 vinceyanez**），存于 `public/models/`。`Steve.glb` / `Villager.glb` 为历史素材（vinceyanez CC-BY），已从场景移除并从加载进度清单剔除，文件与早期 `Soldier.glb` 一并移到 `archive/models/` 存档（不参与打包与请求，约 2.7 MB）。
-- Draco 解码器本地分发于 `public/draco/`（不依赖 gstatic CDN，大陆可访问）。
+<a id="what-is-this"></a>
 
-## 🛠️ 项目技术栈
+## 这是什么
 
-- **框架**: React 18 + TypeScript + Vite 6
-- **样式**: Tailwind CSS v4 + 毛玻璃拟态风格 (Glassmorphism)
-- **3D 引擎**: Three.js (r160) + GLTFLoader + DRACOLoader + OrbitControls
-- **音频引擎**: Tone.js (PolySynth, Reverb, Loop) + Web Speech API (TTS)
-- **动效**: GSAP（入场动画）
-- **字体**: 系统字体栈（Latin 用系统 UI 字体、中文走 PingFang SC / 微软雅黑），不依赖 Google Fonts，大陆无字体请求
+一个可以直接打开、拖拽、点开的 3D 个人主页。它不把经历排成又一篇纯文本简历，而是做成一座绕轴运行的「星轨展台」：五个手办角色依次出场，土星、纸飞机、地月与能量球沿轨道运行，点开任一环绕物就进入对应板块。
 
-## ⏳ 加载体验
+- **四个板块**：关于我、代表作品、技能图谱、联络交流，每个都能单独分享（`?p=about` 等）。
+- **七个作品档案**：项目卡之外，构建时会为每个项目生成一条可被搜索引擎读取的静态详情页（`/work/<slug>.html`）。
+- **两种语言**：界面文案中英切换，`<html lang>` 同步更新。
+- **零后端**：没有服务器、数据库或第三方 UI 依赖；构建产物直接托管在 GitHub Pages。
 
-- **真实聚合进度**：环形进度遮罩按 14 个登记 GLB 的实际到货进度推进（当前主角 + 土星/地月/能量球为关键路径，10 个装饰环绕物后台补载；骑士/法师与其动画骨骼另随场景加载）。
-- **关键路径放行**：主角 + 土星/地月/能量球到齐即放行遮罩（平滑淡出），8 秒兜底超时保证弱网下也不会被单个装饰物拖住。
-- **备用主角预加载**：当前主角加载完成后后台预取其余 4 个角色 GLB 字节（`THREE.Cache`），切换主角免二次网络请求。
-- **性能自查**：开发模式下渲染循环每 120 帧输出 `drawCalls` / `triangles` 到控制台（`[perf]` 前缀），生产构建不输出。
-- **失败态降级**：WebGL2 不可用、GPU 上下文丢失或主角模型加载失败时，展台切换为可读文字卡片（含重试与「查看文字介绍」入口），不会白屏或卡在加载遮罩。
+适合想看「3D 交互怎么落地」的开发者，也适合只想快速了解作者经历、不想读长文的人。
 
-## 💻 本地开发与构建
+> 技术细节：React 18 · TypeScript 5.6 · Vite 6 · Three.js r160 · Tone.js · Tailwind CSS v4 · GSAP。
+
+<a id="screens"></a>
+
+## 界面一览
+
+<p align="center">
+  <a href="https://elijahzhao.github.io/Self-Introduction/">
+    <img src="docs/screenshots/gallery.jpg" alt="桌面星轨舞台、手机竖屏取景与作品详情页" width="100%" />
+  </a>
+</p>
+
+<p align="center">
+  <sub>左：桌面端星轨舞台与底部导航坞 · 中：为竖屏单独取景 · 右：构建时生成、零 JS 的作品详情页</sub>
+</p>
+
+<a id="what-it-does"></a>
+
+## 核心能力
+
+| 能力 | 实现 | 怎么验证 |
+|---|---|---|
+| 3D 星轨舞台 | Three.js 场景 + `OrbitControls` 视角漫游；角色待机呼吸由 `characterPivot` 位移驱动；四个交互环绕物 + 九个装饰环绕物沿同心轨道运行 | 同时渲染 3 个 canvas（舞台 / 极光背景 / 流体光标），无 `pageerror` |
+| 角色与身份联动 | 5 个 GLB 主角、底部导航坞切换；其余角色在当前主角加载完成后后台预取，切换不再二次请求 | 切换后 `localStorage` 记住选择，模型秒切 |
+| 声音交互 | Tone.js 实时合成 BGM 与 UI 音效；弹窗优先播放真人语音，缺失时回退 Web Speech API | 首次手势后 AudioContext 正常唤醒 |
+| 失败态兜底 | `ErrorBoundary` + `StageFallback` 四种原因（无 WebGL2 / 上下文丢失 / 模型失败 / 组件异常），带重试与文字介绍入口 | 禁用 WebGL2、注入 `WEBGL_lose_context`、模型 404 三种场景均有可读卡片 |
+| 移动端适配 | 竖屏单独缩放取景（`orbitWorld` + 0.6 缩放）；弹窗正文滚动提示；手机返回键关闭卡片而不是退出站点 | 390×844 与 1440×900 两档截图比对 |
+| 可发现性 | `index.html` 内置视觉隐藏但可爬取的中英正文、`Person` / `WebSite` JSON-LD、`LICENSE`、robots、sitemap 与 7 条静态作品页 | 搜索抓取看到正文；`/work/*.html` 直接 200 |
+| 离线与统计 | manifest + 手写 Service Worker；统计默认静默，配置 `VITE_ANALYTICS_ENDPOINT` 后才发送，无 Cookie、尊重 DNT | 断网重载首页与作品页均 200；未配置时产物中 0 处上报端点 |
+
+<a id="architecture"></a>
+
+## 架构
+
+```mermaid
+flowchart LR
+  subgraph UI["React 18 + TypeScript"]
+    App["App<br/>路由·深链·主题"]
+    Dock["PortfolioDock<br/>板块导航"]
+    Modal["InfoModal<br/>四个板块"]
+    Stage["ThreeCanvas<br/>3D 舞台"]
+    App --> Dock
+    App --> Modal
+    App --> Stage
+  end
+
+  Data[("profileConfig.ts<br/>projects.json")] --> App
+  Data --> Gen["build-work-pages.mjs"]
+  Stage --> Three["Three.js r160<br/>GLTFLoader + DRACO + OrbitControls"]
+  Stage --> Sound["Tone.js<br/>BGM / SFX / TTS"]
+  Build["vite build"] --> Gen
+  Gen --> Pages["dist/work/*.html<br/>sitemap.xml"]
+  Build --> SW["sw.js<br/>manifest.webmanifest"]
+```
+
+构建顺序固定为：
+
+```text
+tsc → vite build → build-work-pages → build-pwa → size budget
+```
+
+任何一步失败，GitHub Actions 都不会部署。
+
+<a id="quick-start"></a>
+
+## 快速开始
+
+要求 Node.js 20+，无需任何环境变量。
 
 ```bash
-# 安装依赖
-npm install
-
-# 启动开发服务器
+git clone https://github.com/ElijahZhao/Self-Introduction.git
+cd Self-Introduction
+npm ci
 npm run dev
-
-# 编译与类型检查（tsc + vite build）
-npm run build
-
-# 仅类型检查
-npm run typecheck
-
-# ESLint（真实代码检查，此前该脚本只跑 tsc）
-npm run lint
-
-# 单元测试（vitest，覆盖流量策略等纯逻辑）
-npm run test
-
-# Prettier（按需格式化，仓库尚未全量重排）
-npm run format
-
-# 内容 schema 校验（projects.json：version、slug 唯一性、必填字段、URL 格式）
-npm run check:content
-
-# 产物体积预算（超限即失败）
-npm run check:size
-
-# 端到端冒烟（Playwright：舞台渲染、深链、返回键、系统深色、语言标记）
-npm run test:e2e
 ```
 
-## 🧩 内容即配置
+打开 `http://localhost:5173`。生产构建与本地预览：
 
-项目卡片的内容不写在组件里，而是放在 `src/data/projects.json`：
+```bash
+npm run build
+npx vite preview --port 4173
+```
+
+常用命令：
+
+| 命令 | 作用 |
+|---|---|
+| `npm run dev` | 开发服务器（HMR） |
+| `npm run build` | 类型检查 + 构建 + 生成作品页 + 写入 `sw.js` |
+| `npm run typecheck` | 仅 `tsc --noEmit` |
+| `npm run lint` | ESLint，`--max-warnings 0` |
+| `npm run test` | Vitest 单元测试（纯逻辑） |
+| `npm run test:e2e` | Playwright 冒烟：舞台、深链、返回键、主题、语言 |
+| `npm run check:content` | 校验 `projects.json` 的 schema 与唯一 slug |
+| `npm run check:size` | 产物体积预算，超限即失败 |
+
+<a id="quality-gates"></a>
+
+## 质量门禁
+
+以下数字来自 2026-11-26 的构建，CI 每一步都会重跑：
+
+| 门禁 | 当前结果 |
+|---|---|
+| TypeScript | `tsc --noEmit` 通过 |
+| ESLint | 0 error / 0 warning（`--max-warnings 0`） |
+| 单元测试 | 13 passed（`vitest`） |
+| 端到端 | 3 passed（`playwright`，zh-CN） |
+| 内容 schema | `projects.json OK.`（7 个项目，唯一 slug） |
+| 产物体积 | 10.04 MiB 总量 · 1172 KiB app JS · 613 KiB 最大 chunk · 44 KiB CSS |
+| 部署 | `Deploy to GitHub Pages` workflow 在 `main` 上自动执行 |
+
+体积预算写死在 `scripts/check-dist-size.mjs`：总量 ≤ 12 MiB、app JS ≤ 1.25 MiB、单 chunk ≤ 0.65 MiB、CSS ≤ 60 KiB。超一点就构建失败，避免“下次再优化”变成永远不优化。
+
+<a id="content-as-configuration"></a>
+
+## 内容即配置
+
+项目卡不写在组件里，而是集中在 [`src/data/projects.json`](src/data/projects.json)：
 
 ```json
-{ "version": 1, "updatedAt": "2026-11-23", "projects": [ { "slug": "cinerec", "...": "..." } ] }
+{
+  "version": 2,
+  "updatedAt": "2026-11-26",
+  "projects": [
+    {
+      "slug": "cinerec",
+      "name": "CineRec",
+      "tagline": "多模态电影推荐系统",
+      "desc": "……",
+      "tech": ["Python", "PyTorch", "FastAPI"],
+      "highlights": ["……"],
+      "repoUrl": "https://github.com/ElijahZhao/cinerec",
+      "papers": [
+        { "title": "CineRec: A Practical Multi-Modal Recommender Study…", "url": "https://doi.org/…" }
+      ]
+    }
+  ]
+}
 ```
 
-- 每个项目必须有唯一 `slug`（kebab-case），它同时决定静态详情页的地址 `/work/<slug>.html`。新增项目只要改这一个文件，构建时会自动生成详情页并重写 `sitemap.xml`。
-- `npm run check:content` 校验结构和必填项（`name`/`tagline`/`desc`/`repoUrl`/`tech`/`highlights`），CI 在构建前执行，字段写错会直接拦住部署。
-- 可选 `papers`（`{ title, url }[]`）会给项目卡和详情页加上「预印本」入口，详情页同时把 DOI 写进 `CreativeWork` 的 `citation`；不填则什么都不渲染。
-- 详情页是纯 HTML、零 JS、无第三方依赖，带 `CreativeWork` 结构化数据与中英摘要；弹窗里每张项目卡右下角的「📄 详情页」指向它。设计上它只做摘要，不复制正文，避免同一内容两处维护。
+- `slug` 唯一（kebab-case），同时决定静态页地址 `/work/<slug>.html`；改一个文件，详情页与 `sitemap.xml` 自动重建。
+- 可选 `papers` 会渲染成「预印本」入口，并把 DOI 写进详情页 `CreativeWork` 的 `citation`。
+- `npm run check:content` 在 CI 构建前执行；字段写错、slug 重复、URL 非法都会直接拦住部署。
 
-## 📶 离线与统计（都可关闭）
+<a id="deployment-and-offline"></a>
 
-- **PWA 离线壳**：构建产物包含 `sw.js` 与 `manifest.webmanifest`，可添加到主屏。导航请求走 network-first（新版本永远不会被旧缓存挡住），`/assets/`、`/models/`、`/draco/`、`/audio/` 走 stale-while-revalidate；每次构建用新的 cache id 并清掉旧缓存。开发模式下不注册 Service Worker。
-- **访问统计**：`src/utils/analytics.ts` 默认静默。只有构建时设置 `VITE_ANALYTICS_ENDPOINT=https://你的收集地址` 才会发送，内容仅 `event / path / lang / ts / detail`（无 Cookie、无访客 ID），并尊重 `Do Not Track`。事件有 `page_view`、`module_open`、`persona_switch`、`project_page_open`；收集端一个能收 JSON POST 的函数即可，不接第三方时保持不配置就完全没有请求。
+## 部署与离线能力
 
-## 🔗 深链与可发现性
+- **部署**：推送 `main` 后，GitHub Actions 依次执行 typecheck → lint → unit → content schema → build → size budget → e2e，再上传 Pages artifact。详见 [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)。
+- **PWA**：构建产物含 `manifest.webmanifest` 与 `sw.js`（每次构建换 cache id，activate 清旧缓存）。导航请求走 network-first，避免旧 HTML 壳挡住新版本；`/assets/`、`/models/`、`/draco/`、`/audio/` 走 stale-while-revalidate。开发模式不注册 Service Worker。
+- **统计（默认关闭）**：构建时设置 `VITE_ANALYTICS_ENDPOINT` 才启用；载荷只有 `event / path / lang / ts / detail`，无 Cookie、无访客 ID，并尊重 `Do Not Track`。事件：`page_view`、`module_open`、`persona_switch`、`project_page_open`。
+- **深链**：`?p=about`、`?p=projects`、`?p=hobbies`、`?p=contact`；`Esc` 或手机返回键关闭卡片，不会把页面退出去。
 
-- 四个板块可直接分享：`?p=about`、`?p=projects`、`?p=hobbies`、`?p=contact`；手机返回键关闭卡片而不是退出站点，`Esc` 同样有效。
-- 页面为画布应用，`index.html` 内置一段视觉隐藏但可被读屏与爬虫读取的文字摘要，以及 `Person` / `WebSite` 结构化数据；`public/robots.txt`、`sitemap.xml` 随构建发布。
-- 首次访问的主题跟随系统 `prefers-color-scheme`，手动切换后以 `localStorage` 为准；切换中英文会同步更新 `<html lang>`。
+<a id="known-limits"></a>
 
-## 🚀 部署到 GitHub Pages
+## 已知限制
 
-1. 运行 `npm run build` 生成 `dist` 目录。
-2. 仓库已配置 `Deploy to GitHub Pages` GitHub Actions 工作流，推送 `main` 分支后自动部署。
+- **WebGL2 是硬门槛**：不支持时不会白屏，但只剩文字介绍卡，3D 体验不可用。
+- **首次加载有模型成本**：`dist` 约 10 MiB；正常网络等主角 + 土星 / 地月 / 能量球，弱网降到只等主角 + 能量球，其余装饰物后台补载。
+- **内容改动需要重新构建**：没有 CMS 或后端，改项目请编辑 `projects.json` 后重新部署。
+- **角色是静态 GLB**：没有骨骼动画，呼吸与入场靠代码位移/补间；更换主角模型需重新走减面、WebP 贴图与 Draco 管线。
+- **单人维护**：更新节奏取决于作者时间，但 CI 会保证每次提交不破坏构建与冒烟测试。
 
-## 📄 许可
+<a id="maintenance-status"></a>
 
-- **代码**：MIT，见 [LICENSE](./LICENSE)。
-- **第三方资产**：不适用 MIT，各自授权以本文「3D 主角团与模型来源」为准。其中 `Wolf.glb` 为 **CC-BY 4.0**，转载或衍生须保留对 vinceyanez 的署名；Quaternius / Kenney / KayKit 素材为 CC0-1.0；五个主角模型与语音文件版权归仓库作者所有。
+## 维护状态
+
+| 状态 | 内容 |
+|---|---|
+| ✅ 已上线 | 深链与返回键、静态可读内容、PWA 离线壳、作品详情页、内容 schema、可选统计、e2e + 体积预算 |
+| ⏸️ 暂缓 | 主角 GLB 替换、双锁文件治理、真机入场时长复测、长线作品化扩展（均已明确不在当前范围） |
+| 💬 欢迎 | Bug 报告、文案纠错、可访问性建议；请开 [Issue](https://github.com/ElijahZhao/Self-Introduction/issues) |
+
+<a id="license-and-assets"></a>
+
+## 许可与资产
+
+- **代码**：MIT，见 [LICENSE](LICENSE)。
+- **第三方资产**：不适用 MIT。完整来源、体积、三角面与授权义务见 [`docs/ASSETS.md`](docs/ASSETS.md)。
+- **必须保留的署名**：`Wolf.glb` 为 **CC-BY 4.0**，转载或衍生须署名 [vinceyanez](https://sketchfab.com/vinceyanez)；Quaternius / Kenney / KayKit 素材为 CC0-1.0；五个主角模型与语音文件版权归作者所有。
+
+<p align="center">
+  <sub>Built with React, Three.js and too many orbit calculations.</sub>
+</p>
