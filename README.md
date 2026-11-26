@@ -8,7 +8,8 @@
 
 <p align="center">
   <strong>✨ A hand-crafted 3D portfolio that turns a résumé into a star-orbit stage.</strong><br />
-  🧭 Four shareable sections · 🌍 bilingual UI · 🛟 graceful WebGL2 fallback · 📴 PWA offline shell · ⚡ zero backend
+  🧭 Four shareable sections · 🌍 bilingual UI · 🛟 graceful WebGL2 fallback<br />
+  📴 PWA offline shell · ⚡ zero backend
 </p>
 
 <p align="center">
@@ -81,7 +82,7 @@
 
 ## 🧩 What it does
 
-| 🧩 Capability | ⚙️ How it works | 🔬 How it is verified |
+| 🧩 Feature | ⚙️ How it works | 🔬 How it is verified |
 |---|---|---|
 | 🎛️ 3D stage | A Three.js scene with `OrbitControls`; idle breathing driven by `characterPivot`; four interactive objects plus nine decorative ones on concentric orbits | Three canvases (stage, aurora backdrop, fluid cursor) and zero `pageerror` |
 | 🧑‍🚀 Characters | Five GLB characters switched from the bottom dock; the other four are prefetched once the active one is ready | The choice persists in `localStorage`; switching avoids a second network round-trip |
