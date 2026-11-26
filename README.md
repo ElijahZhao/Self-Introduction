@@ -102,6 +102,7 @@ npm run test:e2e
 
 - 每个项目必须有唯一 `slug`（kebab-case），它同时决定静态详情页的地址 `/work/<slug>.html`。新增项目只要改这一个文件，构建时会自动生成详情页并重写 `sitemap.xml`。
 - `npm run check:content` 校验结构和必填项（`name`/`tagline`/`desc`/`repoUrl`/`tech`/`highlights`），CI 在构建前执行，字段写错会直接拦住部署。
+- 可选 `papers`（`{ title, url }[]`）会给项目卡和详情页加上「预印本」入口，详情页同时把 DOI 写进 `CreativeWork` 的 `citation`；不填则什么都不渲染。
 - 详情页是纯 HTML、零 JS、无第三方依赖，带 `CreativeWork` 结构化数据与中英摘要；弹窗里每张项目卡右下角的「📄 详情页」指向它。设计上它只做摘要，不复制正文，避免同一内容两处维护。
 
 ## 📶 离线与统计（都可关闭）

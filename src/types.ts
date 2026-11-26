@@ -24,6 +24,7 @@ export interface ProjectItem {
   highlightsEn?: string[];
   demoUrl?: string;
   demoUrl2?: string;
+  papers?: { title: string; url: string }[];
   repoUrl: string;
   accent?: string;
 }

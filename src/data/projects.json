@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "updatedAt": "2026-11-23",
+  "version": 2,
+  "updatedAt": "2026-11-26",
   "projects": [
     {
       "slug": "self-introduction",
@@ -47,8 +47,8 @@
       "nameEn": "CineRec",
       "tagline": "多模态电影推荐系统",
       "taglineEn": "Multi-Modal Movie Recommendation",
-      "desc": "6 级算法阶梯（UserCF→ItemCF→SVD→NeuMF→MultiModalNCF）+ 2 个已发表 SOTA baseline 公平对比，跨数据集验证，附配套论文。",
-      "descEn": "6-level algorithm ladder (UserCF→ItemCF→SVD→NeuMF→MultiModalNCF) + 2 published SOTA baselines, cross-dataset validated, with companion paper.",
+      "desc": "8 个推荐模型在 MovieLens 100K 与 Amazon Video_Games 上按统一协议对比；内容塔融合 Sentence-BERT 文本、ResNet-50 图像与题材特征，并做模态消融与冷启动实验。",
+      "descEn": "Eight recommenders compared under one protocol on MovieLens 100K and Amazon Video_Games; a content tower fuses Sentence-BERT text, ResNet-50 image and genre features, with modality ablation and cold-start experiments.",
       "tech": [
         "Python 3.10",
         "PyTorch 2.13",
@@ -64,21 +64,29 @@
         "Streamlit"
       ],
       "highlights": [
+        "8 模型 / 2 数据集统一协议：HR、NDCG、Recall + 多种子",
         "MultiModalNCF HR@10 0.3650 / NDCG@10 0.0859",
-        "MovieLens 100K + Amazon Video_Games 跨域验证",
-        "leave-last-5-out + 5 seeds mean±std",
-        "配套论文 docs/paper.pdf"
+        "Sentence-BERT + ResNet-50 + 题材特征内容塔",
+        "模态消融 + 冷启动实验，定位内容信息真实贡献",
+        "FastAPI + Streamlit 双 Demo，附预印本"
       ],
       "highlightsEn": [
+        "8 models / 2 datasets under one protocol: HR, NDCG, Recall + multiple seeds",
         "MultiModalNCF HR@10 0.3650 / NDCG@10 0.0859",
-        "MovieLens 100K + Amazon cross-domain",
-        "leave-last-5-out + 5 seeds mean±std",
-        "Companion paper docs/paper.pdf"
+        "Sentence-BERT + ResNet-50 + genre content tower",
+        "Modality ablation + cold-start to isolate the real contribution of content",
+        "FastAPI + Streamlit demos, with preprint"
       ],
       "demoUrl": "https://cinerec-rfew.onrender.com",
       "demoUrl2": "https://cinerec-movie-recommend.streamlit.app",
       "repoUrl": "https://github.com/ElijahZhao/cinerec",
-      "accent": "#e74c3c"
+      "accent": "#e74c3c",
+      "papers": [
+        {
+          "title": "CineRec: A Practical Multi-Modal Recommender Study with Cross-Dataset Validation and Published-Baseline Comparison",
+          "url": "https://doi.org/10.20944/preprints202610.2504.v1"
+        }
+      ]
     },
     {
       "slug": "aerorec",
@@ -86,8 +94,8 @@
       "nameEn": "AeroRec",
       "tagline": "出行智能推荐中台",
       "taglineEn": "Travel Recommendation Middleware",
-      "desc": "工业级推荐全链路工程复现：多路召回→DeepFM CTR 排序→降级兜底→服务化→可解释→真实 CTR 评估，含偏差传播诊断研究。",
-      "descEn": "Industrial-grade recommendation pipeline: multi-route recall → DeepFM CTR ranking → degradation → service → explainability → real CTR evaluation, with bias-propagation research.",
+      "desc": "推荐全链路工程复现 + 偏差诊断研究：在真值与倾向可精确计算的 Oracle 环境中拆解召回、排序、混排三阶段，对比 naive 与 IPS/SNIPS 去偏，并用参数扫描与 bootstrap 给出有效边界。",
+      "descEn": "Full recommendation pipeline reproduction plus a bias-diagnosis study: an Oracle environment with known ground truth and propensities splits recall, ranking and mixed ranking, comparing naive against IPS/SNIPS debiasing with parameter scans and bootstrap.",
       "tech": [
         "Python",
         "PyTorch",
@@ -101,20 +109,28 @@
         "Streamlit"
       ],
       "highlights": [
+        "Oracle 环境：真值 + 倾向可精确计算，naive vs IPS/SNIPS 对照",
         "Two-Tower 双塔 + ItemCF + 规则四路召回",
-        "DeepFM (FM+DNN) CTR 排序",
-        "在线推理 P50 0.7ms / P99 1ms",
-        "偏差传播诊断 + 去偏边界（论文预印本）"
+        "DeepFM (FM+DNN) CTR 排序 + 多目标混排 + 降级兜底",
+        "参数扫描 + bootstrap 估计去偏有效边界",
+        "在线推理 P50 0.7ms / P99 1ms，附中英双语面板"
       ],
       "highlightsEn": [
-        "Two-Tower + ItemCF + Rule 4-route recall",
-        "DeepFM (FM+DNN) CTR ranking",
-        "Inference P50 0.7ms / P99 1ms",
-        "Bias propagation + debias boundary (preprint)"
+        "Oracle environment with exact ground truth and propensities; naive vs IPS/SNIPS",
+        "Two-Tower + ItemCF + rule-based four-way recall",
+        "DeepFM (FM+DNN) CTR ranking + multi-objective mixing + fallback",
+        "Parameter scans + bootstrap to map the effective boundary of debiasing",
+        "Online inference P50 0.7 ms / P99 1 ms, bilingual panel"
       ],
       "demoUrl": "https://aerorec-tourism.streamlit.app",
       "repoUrl": "https://github.com/Elijah-Lin-Dancer/AeroRec",
-      "accent": "#0ea5e9"
+      "accent": "#0ea5e9",
+      "papers": [
+        {
+          "title": "Bias Propagation and Effective Boundaries of Debiasing in Recommender Systems: An Oracle-Based Diagnosis Study",
+          "url": "https://doi.org/10.20944/preprints202610.2582.v2"
+        }
+      ]
     },
     {
       "slug": "metanutri",
@@ -122,8 +138,8 @@
       "nameEn": "MetaNutri",
       "tagline": "精准营养代谢数字孪生（含 PPGR 血糖预测）",
       "taglineEn": "Precision Nutrition Digital Twin (w/ PPGR)",
-      "desc": "全栈平台 + 独立研究模块。核心成果：餐后 2 小时血糖反应预测，XGBoost + 留一受试者交叉验证（LOPO），2-h AUC Pearson r 达 0.890。",
-      "descEn": "Full-stack platform + research module. Core result: 2-h postprandial glucose response prediction with XGBoost + leave-one-subject-out validation, 2-h AUC Pearson r = 0.890.",
+      "desc": "全栈平台 + 独立研究模块。在 45 名受试者上做留一受试者交叉验证（LOPO），并在 16 人队列做外部验证：比较均值预测、Ridge 与 XGBoost，配套 conformal 预测区间、方差分解与混合效应模型；另建 200 题 RAG 基准与可溯源问答应用。",
+      "descEn": "Full-stack platform + independent research module. Leave-one-participant-out (LOPO) validation on 45 participants with external validation on 16, comparing mean predictors, Ridge and XGBoost, with conformal intervals, variance decomposition and mixed-effects models; plus a 200-question RAG benchmark and a citation-traceable QA app.",
       "tech": [
         "Next.js",
         "FastAPI",
@@ -140,20 +156,32 @@
       ],
       "highlights": [
         "43 REST endpoints / 8 数据集 / 17 页技术报告",
-        "CGMacros (45人/1557餐) LOPO 验证",
-        "2-h AUC r=0.890(早餐) / 0.838(全餐)",
+        "45 人 LOPO + 16 人外部验证，2-h AUC r=0.890（早餐）/ 0.838（全餐）",
+        "conformal 预测区间 + 方差分解 + 混合效应模型",
+        "200 题 RAG 基准：规则判官 + 人工复核 + 三模型误差归因",
         "模型导出 JSON，运行时无需训练栈"
       ],
       "highlightsEn": [
-        "43 REST endpoints / 8 datasets / 17-page report",
-        "CGMacros (45 subj / 1557 meals) LOPO",
-        "2-h AUC r=0.890(breakfast) / 0.838(all)",
+        "43 REST endpoints / 8 datasets / 17-page technical report",
+        "LOPO on 45 participants + external validation on 16; 2-h AUC r=0.890 (breakfast) / 0.838 (all meals)",
+        "Conformal prediction intervals + variance decomposition + mixed-effects models",
+        "200-question RAG benchmark: rule judges + manual review + 3-model error attribution",
         "Model exported as JSON, no training stack at runtime"
       ],
       "demoUrl": "https://meta-nutri-ai.vercel.app/",
       "demoUrl2": "https://metanutri-ai-ppgr-predictor.streamlit.app/",
       "repoUrl": "https://github.com/ElijahZhao/MetaNutri---AI-",
-      "accent": "#10b981"
+      "accent": "#10b981",
+      "papers": [
+        {
+          "title": "Measurement Reliability Confounds Cross-Regime Comparisons of Postprandial Glucose Prediction",
+          "url": "https://doi.org/10.21203/rs.3.rs-11558064/v1"
+        },
+        {
+          "title": "NutriQA: A Traceable RAG Question-Answering Benchmark and Empirical Study on Official Chinese Nutrition Data",
+          "url": "https://doi.org/10.21203/rs.3.rs-11565315/v1"
+        }
+      ]
     },
     {
       "slug": "pixelforge",
@@ -161,8 +189,8 @@
       "nameEn": "PixelForge",
       "tagline": "图像超分与低光增强全流程",
       "taglineEn": "Image Super-Resolution & Low-Light Pipeline",
-      "desc": "从零手写的端到端视觉流水线：SRCNN + SRResNet + 低光 U-Net，全流程自研（数据→训练→评估→TorchScript 导出→FastAPI 后端）。",
-      "descEn": "End-to-end vision pipeline built from scratch: SRCNN + SRResNet + low-light U-Net, full pipeline (data→training→eval→TorchScript export→FastAPI backend).",
+      "desc": "从零手写的端到端视觉流水线：SRCNN ×2、SRResNet ×4 与低光增强 U-Net，覆盖 DIV2K / LOL 数据、Charbonnier + VGG 感知损失、余弦退火与混合精度，再到 TorchScript、FastAPI、Streamlit 与 Docker。",
+      "descEn": "An end-to-end restoration pipeline written from scratch: SRCNN ×2, SRResNet ×4 and a low-light U-Net, trained on DIV2K / LOL with Charbonnier + VGG perceptual loss, cosine annealing and mixed precision, then exported to TorchScript and shipped via FastAPI, Streamlit and Docker.",
       "tech": [
         "Python",
         "PyTorch",
@@ -180,18 +208,26 @@
       "highlights": [
         "SR×4 PSNR 27.47 (+0.77dB vs bicubic)",
         "SR×2 PSNR 32.35 / 低光 PSNR 18.32",
-        "AMP 混合精度 + VGG 感知损失",
-        "CI 覆盖率门禁 + Docker 非 root + API 限流"
+        "Charbonnier + VGG 感知损失 / Adam / 余弦退火 / AMP",
+        "DIV2K + LOL 双数据集，统一 Bicubic 与 no-op 基线",
+        "TorchScript + FastAPI + Streamlit + Docker/CI，含经典算法兜底"
       ],
       "highlightsEn": [
-        "SR×4 PSNR 27.47 (+0.77dB vs bicubic)",
-        "SR×2 PSNR 32.35 / Low-light PSNR 18.32",
-        "AMP mixed precision + VGG perceptual loss",
-        "CI coverage gate + Docker non-root + API rate limit"
+        "SR×4 PSNR 27.47 (+0.77 dB vs bicubic)",
+        "SR×2 PSNR 32.35 / low-light PSNR 18.32",
+        "Charbonnier + VGG perceptual loss / Adam / cosine annealing / AMP",
+        "DIV2K + LOL, unified Bicubic and no-op baselines",
+        "TorchScript + FastAPI + Streamlit + Docker/CI with classical fallback"
       ],
       "demoUrl": "https://pixelforge-image-restoration.streamlit.app/",
       "repoUrl": "https://github.com/ElijahZhao/pixelforge-image-restoration-",
-      "accent": "#8b5cf6"
+      "accent": "#8b5cf6",
+      "papers": [
+        {
+          "title": "The Protocol is the Result: How Evaluation Choices Flip the Verdict on Lightweight Image Restoration",
+          "url": "https://doi.org/10.20944/preprints202611.0550.v1"
+        }
+      ]
     },
     {
       "slug": "travel-footprint",

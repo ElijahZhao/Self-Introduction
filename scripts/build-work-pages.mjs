@@ -54,6 +54,22 @@ const page = (project) => {
     ? `<a class="btn ghost" href="${escape(project.demoUrl2)}" target="_blank" rel="noopener noreferrer">研究 Demo</a>`
     : '';
   const repo = `<a class="btn ghost" href="${escape(project.repoUrl)}" target="_blank" rel="noopener noreferrer">源码仓库</a>`;
+  const papers = (project.papers || [])
+    .map(
+      (paper, pi) =>
+        `<a class="btn ghost" href="${escape(paper.url)}" target="_blank" rel="noopener noreferrer">预印本${project.papers.length > 1 ? ` ${pi + 1}` : ''}</a>`
+    )
+    .join('');
+  const papersSection =
+    project.papers && project.papers.length > 0
+      ? `<h2>预印本 / Preprints</h2>
+  <ul class="papers">${project.papers
+    .map(
+      (paper) =>
+        `<li><a href="${escape(paper.url)}" target="_blank" rel="noopener noreferrer">${escape(paper.title)}</a></li>`
+    )
+    .join('')}</ul>`
+      : '';
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -64,6 +80,9 @@ const page = (project) => {
     url: `${SITE}/work/${project.slug}.html`,
     keywords: project.tech.join(', '),
     codeRepository: project.repoUrl,
+    ...(project.papers && project.papers.length > 0
+      ? { citation: project.papers.map((paper) => paper.url) }
+      : {}),
     author: {
       '@type': 'Person',
       name: 'Elijah Zhao',
@@ -110,6 +129,10 @@ const page = (project) => {
   .chips li { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--ink); }
   .facts li { display: flex; gap: 8px; font-size: 13px; color: var(--muted); width: 100%; }
   .facts li::before { content: '▸'; color: var(--accent); }
+  .papers { display: block; }
+  .papers li { font-size: 13px; line-height: 1.65; margin-bottom: 8px; color: var(--muted); }
+  .papers a { color: var(--ink); text-decoration-color: color-mix(in srgb, var(--accent) 55%, transparent); text-underline-offset: 3px; }
+  .papers a:hover { color: var(--accent); }
   .links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
   .btn { font-size: 13px; font-weight: 600; padding: 9px 14px; border-radius: 10px; color: #fff; background: var(--accent); text-decoration: none; }
   .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
@@ -135,7 +158,9 @@ const page = (project) => {
   <h2>关键结果</h2>
   <ul class="facts">${highlights}</ul>
 
-  <div class="links">${demo}${demo2}${repo}</div>
+  ${papersSection}
+
+  <div class="links">${demo}${demo2}${repo}${papers}</div>
 
   <section class="en" lang="en">
     <h2>English summary</h2>

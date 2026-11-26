@@ -51,6 +51,20 @@ export const validateContent = (doc) => {
     for (const key of ['demoUrl', 'demoUrl2']) {
       if (project?.[key] && !URL.test(project[key])) problems.push(`${at}: ${key} must be an http(s) URL`);
     }
+    if (project?.papers !== undefined) {
+      if (!Array.isArray(project.papers)) {
+        problems.push(`${at}: papers must be an array when present`);
+      } else {
+        project.papers.forEach((/** @type {any} */ paper, /** @type {number} */ pi) => {
+          if (typeof paper?.title !== 'string' || paper.title.trim() === '') {
+            problems.push(`${at}: papers[${pi}].title is required`);
+          }
+          if (typeof paper?.url !== 'string' || !URL.test(paper.url)) {
+            problems.push(`${at}: papers[${pi}].url must be an http(s) URL`);
+          }
+        });
+      }
+    }
     if (!Array.isArray(project?.tech) || project.tech.length === 0) {
       problems.push(`${at}: tech must be a non-empty array`);
     }

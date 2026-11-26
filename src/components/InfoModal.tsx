@@ -239,6 +239,23 @@ export const InfoModal: React.FC<InfoModalProps> = ({
                       }`}>
                       🐙 {pick('源码', 'Source')}
                     </a>
+                    {(proj.papers || []).map((paper, pi) => (
+                      <a
+                        key={pi}
+                        href={paper.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={paper.title}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer ${
+                          isDark
+                            ? 'bg-amber-500/15 text-amber-300 hover:bg-amber-500/25'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200 hover:border-amber-300'
+                        }`}
+                      >
+                        📄 {pick('预印本', 'Preprint')}
+                        {proj.papers && proj.papers.length > 1 ? ` ${pi + 1}` : ''}
+                      </a>
+                    ))}
                     {/* Static, JS-free page generated at build time: link previews
                         and crawlers can read it, and it is shareable on its own. */}
                     <a
