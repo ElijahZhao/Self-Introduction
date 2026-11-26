@@ -83,13 +83,13 @@
 
 | 🧩 Capability | ⚙️ How it works | 🔬 How it is verified |
 |---|---|---|
-| 🎛️ 3D orbit stage | A Three.js scene with `OrbitControls`; idle breathing driven by `characterPivot`; four interactive objects plus nine decorative ones on concentric orbits | Three canvases (stage, aurora backdrop, fluid cursor) and zero `pageerror` |
-| 🧑‍🚀 Characters and personas | Five GLB characters switched from the bottom dock; the other four are prefetched once the active one is ready | The choice persists in `localStorage`; switching avoids a second network round-trip |
+| 🎛️ 3D stage | A Three.js scene with `OrbitControls`; idle breathing driven by `characterPivot`; four interactive objects plus nine decorative ones on concentric orbits | Three canvases (stage, aurora backdrop, fluid cursor) and zero `pageerror` |
+| 🧑‍🚀 Characters | Five GLB characters switched from the bottom dock; the other four are prefetched once the active one is ready | The choice persists in `localStorage`; switching avoids a second network round-trip |
 | 🔊 Sound | Tone.js synthesises BGM and UI sounds; modals prefer recorded voice, then fall back to Web Speech API | AudioContext resumes on the first gesture |
-| 🛟 Failure handling | `ErrorBoundary` + `StageFallback` for four reasons (no WebGL2, context lost, model failure, component error), with retry and a text-only entry | WebGL2 disabled, `WEBGL_lose_context`, and model 404 all produce a readable card |
+| 🛟 Failure | `ErrorBoundary` + `StageFallback` for four reasons (no WebGL2, context lost, model failure, component error), with retry and a text-only entry | WebGL2 disabled, `WEBGL_lose_context`, and model 404 all produce a readable card |
 | 📱 Mobile | A separate portrait framing (`orbitWorld` + 0.6 scale), scroll hint in modals, and the phone back button closes the card instead of leaving the site | Screenshot comparison at 390×844 and 1440×900 |
-| 🔎 Discoverability | A visually hidden but crawlable intro in `index.html`, `Person` / `WebSite` JSON-LD, robots, sitemap and seven static project pages | Crawlers see text; `/work/*.html` returns 200 |
-| 📡 Offline and analytics | Manifest plus a hand-written Service Worker; analytics stay silent until `VITE_ANALYTICS_ENDPOINT` is set, with no cookies and DNT respected | Offline reload of the home and project pages returns 200; the default build contains no endpoint string |
+| 🔎 Discovery | A visually hidden but crawlable intro in `index.html`, `Person` / `WebSite` JSON-LD, robots, sitemap and seven static project pages | Crawlers see text; `/work/*.html` returns 200 |
+| 📡 Offline | Manifest plus a hand-written Service Worker; analytics stay silent until `VITE_ANALYTICS_ENDPOINT` is set, with no cookies and DNT respected | Offline reload of the home and project pages returns 200; the default build contains no endpoint string |
 
 <a id="architecture"></a>
 
