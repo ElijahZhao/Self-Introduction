@@ -1,14 +1,14 @@
 <p align="center">
   <a href="https://elijahzhao.github.io/Self-Introduction/">
-    <img src="docs/readme-banner.jpg" alt="3D 互动个人星轨展台：手办主角、星轨环绕物与四个可分享板块" width="100%" />
+    <img src="docs/readme-banner-en.jpg" alt="Interactive 3D portfolio: chibi characters, orbiting objects and four shareable sections" width="100%" />
   </a>
 </p>
 
-<h1 align="center">3D 互动个人星轨展台</h1>
+<h1 align="center">🪐 Interactive 3D Avatar Portfolio</h1>
 
 <p align="center">
-  <strong>把手办角色、星轨环绕物和语音讲解放进一个纯前端的 3D 作品集。</strong><br />
-  四个板块可深链分享 · 中英双语 · WebGL2 失败可降级 · PWA 离线壳 · 零后端
+  <strong>✨ A hand-crafted 3D portfolio that turns a résumé into a star-orbit stage.</strong><br />
+  🧭 Four shareable sections · 🌍 bilingual UI · 🛟 graceful WebGL2 fallback · 📴 PWA offline shell · ⚡ zero backend
 </p>
 
 <p align="center">
@@ -21,87 +21,87 @@
 </p>
 
 <p align="center">
-  <a href="https://elijahzhao.github.io/Self-Introduction/"><strong>🚀 在线展台</strong></a> ·
-  <a href="https://elijahzhao.github.io/Self-Introduction/?p=about">关于我</a> ·
-  <a href="https://elijahzhao.github.io/Self-Introduction/?p=projects">代表作品</a> ·
-  <a href="https://elijahzhao.github.io/Self-Introduction/?p=hobbies">技能图谱</a> ·
-  <a href="https://elijahzhao.github.io/Self-Introduction/?p=contact">联络交流</a>
+  <a href="https://elijahzhao.github.io/Self-Introduction/"><strong>🚀 Live Demo</strong></a> ·
+  <a href="https://elijahzhao.github.io/Self-Introduction/?p=about">About</a> ·
+  <a href="https://elijahzhao.github.io/Self-Introduction/?p=projects">Projects</a> ·
+  <a href="https://elijahzhao.github.io/Self-Introduction/?p=hobbies">Skills</a> ·
+  <a href="https://elijahzhao.github.io/Self-Introduction/?p=contact">Contact</a>
 </p>
 
 <p align="center">
-  简体中文 | <a href="README.en.md">English</a>
+  <a href="README.zh-CN.md">简体中文</a> | English
 </p>
 
 ---
 
-## 目录
+## 🧭 Contents
 
-- [这是什么](#what-is-this)
-- [界面一览](#screens)
-- [核心能力](#what-it-does)
-- [架构](#architecture)
-- [快速开始](#quick-start)
-- [质量门禁](#quality-gates)
-- [内容即配置](#content-as-configuration)
-- [部署与离线能力](#deployment-and-offline)
-- [已知限制](#known-limits)
-- [维护状态](#maintenance-status)
-- [许可与资产](#license-and-assets)
+- [📖 What is this](#what-is-this)
+- [🖼️ Screens](#screens)
+- [🧩 What it does](#what-it-does)
+- [🏗️ Architecture](#architecture)
+- [🚀 Quick start](#quick-start)
+- [✅ Quality gates](#quality-gates)
+- [🗂️ Content as configuration](#content-as-configuration)
+- [🌐 Deployment and offline](#deployment-and-offline)
+- [⚠️ Known limits](#known-limits)
+- [🛠️ Maintenance status](#maintenance-status)
+- [📄 License and assets](#license-and-assets)
 
 <a id="what-is-this"></a>
 
-## 这是什么
+## 📖 What is this
 
-一个可以直接打开、拖拽、点开的 3D 个人主页。它不把经历排成又一篇纯文本简历，而是做成一座绕轴运行的「星轨展台」：五个手办角色依次出场，土星、纸飞机、地月与能量球沿轨道运行，点开任一环绕物就进入对应板块。
+🎬 A 3D portfolio you can open, drag and click through. Instead of another wall of text, it is a star-orbit stage: five chibi characters make a staggered entrance, Saturn, a paper plane, Earth & Moon and an energy orb orbit the stage, and opening any orbiting object reveals the matching section.
 
-- **四个板块**：关于我、代表作品、技能图谱、联络交流，每个都能单独分享（`?p=about` 等）。
-- **七个作品档案**：项目卡之外，构建时会为每个项目生成一条可被搜索引擎读取的静态详情页（`/work/<slug>.html`）。
-- **两种语言**：界面文案中英切换，`<html lang>` 同步更新。
-- **零后端**：没有服务器、数据库或第三方 UI 依赖；构建产物直接托管在 GitHub Pages。
+- 🧭 **Four sections** — About, Projects, Skills, Contact — each with its own shareable URL (`?p=about`, etc.).
+- 🗂️ **Seven project pages** — beyond the in-scene cards, the build generates a static, crawlable page per project at `/work/<slug>.html`.
+- 🌍 **Two languages** — Chinese and English switch at runtime, and `<html lang>` follows.
+- ⚡ **No backend** — no server, database or third-party UI service; the build output is static and hosted on GitHub Pages.
 
-适合想看「3D 交互怎么落地」的开发者，也适合只想快速了解作者经历、不想读长文的人。
+👀 It is for developers who want to see how a 3D interaction is engineered, and for anyone who wants the short version of the author's background without reading a long document.
 
-> 技术细节：React 18 · TypeScript 5.6 · Vite 6 · Three.js r160 · Tone.js · Tailwind CSS v4 · GSAP。
+> 🛠️ Stack: React 18 · TypeScript 5.6 · Vite 6 · Three.js r160 · Tone.js · Tailwind CSS v4 · GSAP.
 
 <a id="screens"></a>
 
-## 界面一览
+## 🖼️ Screens
 
 <p align="center">
   <a href="https://elijahzhao.github.io/Self-Introduction/">
-    <img src="docs/screenshots/gallery.jpg" alt="桌面星轨舞台、手机竖屏取景与作品详情页" width="100%" />
+    <img src="docs/screenshots/gallery.jpg" alt="Desktop orbit stage, portrait framing and a static project page" width="100%" />
   </a>
 </p>
 
 <p align="center">
-  <sub>左：桌面端星轨舞台与底部导航坞 · 中：为竖屏单独取景 · 右：构建时生成、零 JS 的作品详情页</sub>
+  <sub>🖥️ Left: desktop orbit stage and persona dock · 📱 Middle: a separate portrait framing · 📄 Right: a zero-JS project page generated at build time</sub>
 </p>
 
 <a id="what-it-does"></a>
 
-## 核心能力
+## 🧩 What it does
 
-| 能力 | 实现 | 怎么验证 |
+| 🧩 Capability | ⚙️ How it works | 🔬 How it is verified |
 |---|---|---|
-| 3D 舞台 | Three.js 场景 + `OrbitControls` 视角漫游；角色待机呼吸由 `characterPivot` 位移驱动；四个交互环绕物 + 九个装饰环绕物沿同心轨道运行 | 同时渲染 3 个 canvas（舞台 / 极光背景 / 流体光标），无 `pageerror` |
-| 角色切换 | 5 个 GLB 主角、底部导航坞切换；其余角色在当前主角加载完成后后台预取，切换不再二次请求 | 切换后 `localStorage` 记住选择，模型秒切 |
-| 声音 | Tone.js 实时合成 BGM 与 UI 音效；弹窗优先播放真人语音，缺失时回退 Web Speech API | 首次手势后 AudioContext 正常唤醒 |
-| 失败兜底 | `ErrorBoundary` + `StageFallback` 四种原因（无 WebGL2 / 上下文丢失 / 模型失败 / 组件异常），带重试与文字介绍入口 | 禁用 WebGL2、注入 `WEBGL_lose_context`、模型 404 三种场景均有可读卡片 |
-| 移动端 | 竖屏单独缩放取景（`orbitWorld` + 0.6 缩放）；弹窗正文滚动提示；手机返回键关闭卡片而不是退出站点 | 390×844 与 1440×900 两档截图比对 |
-| 可发现 | `index.html` 内置视觉隐藏但可爬取的中英正文、`Person` / `WebSite` JSON-LD、`LICENSE`、robots、sitemap 与 7 条静态作品页 | 搜索抓取看到正文；`/work/*.html` 直接 200 |
-| 离线 / 统计 | manifest + 手写 Service Worker；统计默认静默，配置 `VITE_ANALYTICS_ENDPOINT` 后才发送，无 Cookie、尊重 DNT | 断网重载首页与作品页均 200；未配置时产物中 0 处上报端点 |
+| 🎛️ 3D orbit stage | A Three.js scene with `OrbitControls`; idle breathing driven by `characterPivot`; four interactive objects plus nine decorative ones on concentric orbits | Three canvases (stage, aurora backdrop, fluid cursor) and zero `pageerror` |
+| 🧑‍🚀 Characters and personas | Five GLB characters switched from the bottom dock; the other four are prefetched once the active one is ready | The choice persists in `localStorage`; switching avoids a second network round-trip |
+| 🔊 Sound | Tone.js synthesises BGM and UI sounds; modals prefer recorded voice, then fall back to Web Speech API | AudioContext resumes on the first gesture |
+| 🛟 Failure handling | `ErrorBoundary` + `StageFallback` for four reasons (no WebGL2, context lost, model failure, component error), with retry and a text-only entry | WebGL2 disabled, `WEBGL_lose_context`, and model 404 all produce a readable card |
+| 📱 Mobile | A separate portrait framing (`orbitWorld` + 0.6 scale), scroll hint in modals, and the phone back button closes the card instead of leaving the site | Screenshot comparison at 390×844 and 1440×900 |
+| 🔎 Discoverability | A visually hidden but crawlable intro in `index.html`, `Person` / `WebSite` JSON-LD, robots, sitemap and seven static project pages | Crawlers see text; `/work/*.html` returns 200 |
+| 📡 Offline and analytics | Manifest plus a hand-written Service Worker; analytics stay silent until `VITE_ANALYTICS_ENDPOINT` is set, with no cookies and DNT respected | Offline reload of the home and project pages returns 200; the default build contains no endpoint string |
 
 <a id="architecture"></a>
 
-## 架构
+## 🏗️ Architecture
 
 ```mermaid
 flowchart LR
   subgraph UI["React 18 + TypeScript"]
-    App["App<br/>路由·深链·主题"]
-    Dock["PortfolioDock<br/>板块导航"]
-    Modal["InfoModal<br/>四个板块"]
-    Stage["ThreeCanvas<br/>3D 舞台"]
+    App["App<br/>routing·deep links·theme"]
+    Dock["PortfolioDock<br/>section navigation"]
+    Modal["InfoModal<br/>four sections"]
+    Stage["ThreeCanvas<br/>3D stage"]
     App --> Dock
     App --> Modal
     App --> Stage
@@ -116,19 +116,19 @@ flowchart LR
   Build --> SW["sw.js<br/>manifest.webmanifest"]
 ```
 
-构建顺序固定为：
+🧱 The build order is fixed:
 
 ```text
 tsc → vite build → build-work-pages → build-pwa → size budget
 ```
 
-任何一步失败，GitHub Actions 都不会部署。
+🚦 If any step fails, GitHub Actions does not deploy.
 
 <a id="quick-start"></a>
 
-## 快速开始
+## 🚀 Quick start
 
-要求 Node.js 20+，无需任何环境变量。
+📦 Node.js 20+ is required. No environment variables are needed.
 
 ```bash
 git clone https://github.com/ElijahZhao/Self-Introduction.git
@@ -137,49 +137,49 @@ npm ci
 npm run dev
 ```
 
-打开 `http://localhost:5173`。生产构建与本地预览：
+🌐 Open `http://localhost:5173`. To build and preview the production output:
 
 ```bash
 npm run build
 npx vite preview --port 4173
 ```
 
-常用命令：
+⌨️ Common commands:
 
-| 命令 | 作用 |
+| ⌨️ Command | 🎯 Purpose |
 |---|---|
-| `npm run dev` | 开发服务器（HMR） |
-| `npm run build` | 类型检查 + 构建 + 生成作品页 + 写入 `sw.js` |
-| `npm run typecheck` | 仅 `tsc --noEmit` |
-| `npm run lint` | ESLint，`--max-warnings 0` |
-| `npm run test` | Vitest 单元测试（纯逻辑） |
-| `npm run test:e2e` | Playwright 冒烟：舞台、深链、返回键、主题、语言 |
-| `npm run check:content` | 校验 `projects.json` 的 schema 与唯一 slug |
-| `npm run check:size` | 产物体积预算，超限即失败 |
+| `npm run dev` | Dev server with HMR |
+| `npm run build` | Typecheck, build, generate project pages, write `sw.js` |
+| `npm run typecheck` | `tsc --noEmit` only |
+| `npm run lint` | ESLint with `--max-warnings 0` |
+| `npm run test` | Vitest unit tests for pure logic |
+| `npm run test:e2e` | Playwright smoke: stage, deep link, back button, theme, language |
+| `npm run check:content` | Validate `projects.json` schema and unique slugs |
+| `npm run check:size` | Bundle-size budget; fails when exceeded |
 
 <a id="quality-gates"></a>
 
-## 质量门禁
+## ✅ Quality gates
 
-以下数字来自 2026-11-26 的构建，CI 每一步都会重跑：
+📊 Numbers below are from the 2026-11-26 build. CI re-runs every step:
 
-| 门禁 | 当前结果 |
+| 🚦 Gate | 📈 Current result |
 |---|---|
-| TypeScript | `tsc --noEmit` 通过 |
-| ESLint | 0 error / 0 warning（`--max-warnings 0`） |
-| 单元测试 | 13 passed（`vitest`） |
-| 端到端 | 3 passed（`playwright`，zh-CN） |
-| 内容 schema | `projects.json OK.`（7 个项目，唯一 slug） |
-| 产物体积 | 10.04 MiB 总量 · 1172 KiB app JS · 613 KiB 最大 chunk · 44 KiB CSS |
-| 部署 | `Deploy to GitHub Pages` workflow 在 `main` 上自动执行 |
+| TypeScript | `tsc --noEmit` passes |
+| ESLint | 0 errors / 0 warnings (`--max-warnings 0`) |
+| Unit tests | 13 passed (`vitest`) |
+| End-to-end | 3 passed (`playwright`, zh-CN) |
+| Content schema | `projects.json OK.` (7 projects, unique slugs) |
+| Bundle size | 10.04 MiB total · 1172 KiB app JS · 613 KiB largest chunk · 44 KiB CSS |
+| Deployment | `Deploy to GitHub Pages` runs automatically on `main` |
 
-体积预算写死在 `scripts/check-dist-size.mjs`：总量 ≤ 12 MiB、app JS ≤ 1.25 MiB、单 chunk ≤ 0.65 MiB、CSS ≤ 60 KiB。超一点就构建失败，避免“下次再优化”变成永远不优化。
+🛡️ The budget lives in `scripts/check-dist-size.mjs`: total ≤ 12 MiB, app JS ≤ 1.25 MiB, largest chunk ≤ 0.65 MiB, CSS ≤ 60 KiB. A single overshoot fails the build, so "optimise later" cannot quietly become "never".
 
 <a id="content-as-configuration"></a>
 
-## 内容即配置
+## 🗂️ Content as configuration
 
-项目卡不写在组件里，而是集中在 [`src/data/projects.json`](src/data/projects.json)：
+🧱 Project cards are not hard-coded in components. They live in [`src/data/projects.json`](src/data/projects.json):
 
 ```json
 {
@@ -189,60 +189,60 @@ npx vite preview --port 4173
     {
       "slug": "cinerec",
       "name": "CineRec",
-      "tagline": "多模态电影推荐系统",
-      "desc": "……",
+      "tagline": "Multimodal movie recommender",
+      "desc": "...",
       "tech": ["Python", "PyTorch", "FastAPI"],
-      "highlights": ["……"],
+      "highlights": ["..."],
       "repoUrl": "https://github.com/ElijahZhao/cinerec",
       "papers": [
-        { "title": "CineRec: A Practical Multi-Modal Recommender Study…", "url": "https://doi.org/…" }
+        { "title": "CineRec: A Practical Multi-Modal Recommender Study...", "url": "https://doi.org/..." }
       ]
     }
   ]
 }
 ```
 
-- `slug` 唯一（kebab-case），同时决定静态页地址 `/work/<slug>.html`；改一个文件，详情页与 `sitemap.xml` 自动重建。
-- 可选 `papers` 会渲染成「预印本」入口，并把 DOI 写进详情页 `CreativeWork` 的 `citation`。
-- `npm run check:content` 在 CI 构建前执行；字段写错、slug 重复、URL 非法都会直接拦住部署。
+- 🔗 `slug` is unique (kebab-case) and defines the static page URL `/work/<slug>.html`. Editing this one file rebuilds the detail pages and `sitemap.xml`.
+- 📝 Optional `papers` renders a “Preprint” entry and adds the DOI to the page's `CreativeWork` `citation`.
+- 🧪 `npm run check:content` runs before the build in CI; a bad field, duplicate slug or invalid URL fails the deploy.
 
 <a id="deployment-and-offline"></a>
 
-## 部署与离线能力
+## 🌐 Deployment and offline
 
-- **部署**：推送 `main` 后，GitHub Actions 依次执行 typecheck → lint → unit → content schema → build → size budget → e2e，再上传 Pages artifact。详见 [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)。
-- **PWA**：构建产物含 `manifest.webmanifest` 与 `sw.js`（每次构建换 cache id，activate 清旧缓存）。导航请求走 network-first，避免旧 HTML 壳挡住新版本；`/assets/`、`/models/`、`/draco/`、`/audio/` 走 stale-while-revalidate。开发模式不注册 Service Worker。
-- **统计（默认关闭）**：构建时设置 `VITE_ANALYTICS_ENDPOINT` 才启用；载荷只有 `event / path / lang / ts / detail`，无 Cookie、无访客 ID，并尊重 `Do Not Track`。事件：`page_view`、`module_open`、`persona_switch`、`project_page_open`。
-- **深链**：`?p=about`、`?p=projects`、`?p=hobbies`、`?p=contact`；`Esc` 或手机返回键关闭卡片，不会把页面退出去。
+- 🚀 **Deployment**: pushing to `main` triggers typecheck → lint → unit → content schema → build → size budget → e2e, then uploads the Pages artifact. See [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
+- 📴 **PWA**: the build emits `manifest.webmanifest` and `sw.js` (a new cache id per build; old caches are removed on activate). Navigations are network-first so an old HTML shell never hides a new deploy; `/assets/`, `/models/`, `/draco/` and `/audio/` are stale-while-revalidate. The Service Worker is registered in production only.
+- 📊 **Analytics (off by default)**: only enabled when `VITE_ANALYTICS_ENDPOINT` is set at build time. The payload contains `event / path / lang / ts / detail` — no cookies, no visitor IDs — and Do Not Track is respected. Events: `page_view`, `module_open`, `persona_switch`, `project_page_open`.
+- 🔗 **Deep links**: `?p=about`, `?p=projects`, `?p=hobbies`, `?p=contact`. `Esc` or the phone back button closes the card without leaving the page.
 
 <a id="known-limits"></a>
 
-## 已知限制
+## ⚠️ Known limits
 
-- **WebGL2 是硬门槛**：不支持时不会白屏，但只剩文字介绍卡，3D 体验不可用。
-- **首次加载有模型成本**：`dist` 约 10 MiB；正常网络等主角 + 土星 / 地月 / 能量球，弱网降到只等主角 + 能量球，其余装饰物后台补载。
-- **内容改动需要重新构建**：没有 CMS 或后端，改项目请编辑 `projects.json` 后重新部署。
-- **角色是静态 GLB**：没有骨骼动画，呼吸与入场靠代码位移/补间；更换主角模型需重新走减面、WebP 贴图与 Draco 管线。
-- **单人维护**：更新节奏取决于作者时间，但 CI 会保证每次提交不破坏构建与冒烟测试。
+- 🌐 **WebGL2 is required**: without it the site does not go blank, but only the text fallback remains.
+- 📦 **Models cost bytes on first load**: `dist` is about 10 MiB. On a normal link the overlay waits for the character, Saturn, Earth & Moon and the energy orb; on a constrained link it waits only for the character and the orb, with decorations streaming in the background.
+- 🔄 **Content changes need a rebuild**: there is no CMS or backend; edit `projects.json` and redeploy.
+- 🧍 **Characters are static GLBs**: no skeletal animation; breathing and entrances are transform/tween driven. Replacing a character means re-running decimation, WebP textures and Draco compression.
+- 👤 **Single maintainer**: update cadence depends on the author's time, but CI keeps every commit from breaking the build or the smoke tests.
 
 <a id="maintenance-status"></a>
 
-## 维护状态
+## 🛠️ Maintenance status
 
-| 状态 | 内容 |
+| 📌 Status | 🧾 Items |
 |---|---|
-| ✅ 已上线 | 深链与返回键、静态可读内容、PWA 离线壳、作品详情页、内容 schema、可选统计、e2e + 体积预算 |
-| ⏸️ 暂缓 | 主角 GLB 替换、双锁文件治理、真机入场时长复测、长线作品化扩展（均已明确不在当前范围） |
-| 💬 欢迎 | Bug 报告、文案纠错、可访问性建议；请开 [Issue](https://github.com/ElijahZhao/Self-Introduction/issues) |
+| ✅ Shipped | Deep links and back button, crawlable static content, PWA offline shell, project pages, content schema, opt-in analytics, e2e and size budget |
+| ⏸️ Deferred | Character GLB replacement, dual lockfile cleanup, real-device entrance timing, long-term expansion (all explicitly out of scope for now) |
+| 💬 Welcome | Bug reports, copy fixes, accessibility suggestions — please open an [Issue](https://github.com/ElijahZhao/Self-Introduction/issues) |
 
 <a id="license-and-assets"></a>
 
-## 许可与资产
+## 📄 License and assets
 
-- **代码**：MIT，见 [LICENSE](LICENSE)。
-- **第三方资产**：不适用 MIT。完整来源、体积、三角面与授权义务见 [`docs/ASSETS.md`](docs/ASSETS.md)。
-- **必须保留的署名**：`Wolf.glb` 为 **CC-BY 4.0**，转载或衍生须署名 [vinceyanez](https://sketchfab.com/vinceyanez)；Quaternius / Kenney / KayKit 素材为 CC0-1.0；五个主角模型与语音文件版权归作者所有。
+- 💻 **Code**: MIT, see [LICENSE](LICENSE).
+- 🎨 **Third-party assets**: not covered by MIT. Full sources, sizes, triangle counts and licence obligations are in [`docs/ASSETS.md`](docs/ASSETS.md).
+- 🏷️ **Attribution that must be kept**: `Wolf.glb` is **CC-BY 4.0** — credit [vinceyanez](https://sketchfab.com/vinceyanez) when redistributing or deriving from it. Quaternius / Kenney / KayKit assets are CC0-1.0; the five character models and voice files are copyright the author.
 
 <p align="center">
-  <sub>Built with React, Three.js and too many orbit calculations.</sub>
+  <sub>✨ Built with React, Three.js and too many orbit calculations.</sub>
 </p>
